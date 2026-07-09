@@ -1,0 +1,75 @@
+{
+  // ====== Editor: comportamiento general ======
+  "editor.autoIndent": "full",
+  "editor.detectIndentation": false,
+  "editor.insertSpaces": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": false,
+  "editor.formatOnPaste": true,
+  "editor.tabSize": 2,
+  "editor.lineNumbers": "on",
+  "editor.showUnused": true,
+  "editor.linkedEditing": true,
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": true,
+  // ====== Minimap ======
+  "editor.minimap.enabled": false,
+  "editor.minimap.scale": 1,
+  // ====== Sugerencias e IntelliSense ======
+  "editor.quickSuggestions": {
+    "other": true,
+    "comments": true,
+    "strings": true
+  },
+  "editor.suggest.snippetsPreventQuickSuggestions": false,
+  // ====== Manejo de archivos ======
+  "files.encoding": "utf8",
+  "files.trimTrailingWhitespace": true,
+  "files.insertFinalNewline": true,
+  // ====== Terminal por sistema operativo ======
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "terminal.integrated.defaultProfile.osx": "zsh",
+  // ====== Error Lens ======
+  "errorLens.codeLensTemplate": "$severity $message $source",
+  // ====== Prettier (global) ======
+  "prettier.proseWrap": "preserve",
+  "prettier.quoteProps": "as-needed",
+  "prettier.trailingComma": "es5",
+  "prettier.printWidth": 100,
+  // ====== Overrides por lenguaje ======
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "vscode.typescript-language-features",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true
+  },
+  // ====== Files watcher ======
+  "files.exclude": {
+    "**/bin": false,
+    "**/obj": false
+  },
+  "files.watcherExclude": {
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.git": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist": true
+  }
+}
