@@ -1,7 +1,7 @@
 import { AudioEngine } from "../audio/engine";
-import { type SoundType } from "../audio/sounds";
+import { type SoundsType } from "../audio/sounds";
 
-const validSounds: SoundType[] = ["rain", "wind", "river", "ocean"];
+const validSounds: SoundsType[] = ["rain", "wind", "river", "ocean"];
 
 export function executeCommand(command: string, engine: AudioEngine): string {
   const args = command.trim().toLowerCase().split(" ");
@@ -9,11 +9,11 @@ export function executeCommand(command: string, engine: AudioEngine): string {
   const value = args[1];
 
   if (action === "play") {
-    if (!validSounds.includes(value as SoundType)) {
+    if (!validSounds.includes(value as SoundsType)) {
       return `Sonido no válido. Use: ${validSounds.join(", ")}`;
     }
 
-    engine.start(value as SoundType);
+    engine.start(value as SoundsType);
     return `Reproduciendo: ${value}`;
   }
 

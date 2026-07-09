@@ -1,6 +1,7 @@
 import "./styles/index.css";
 import { AudioEngine } from "./audio/engine";
 import { executeCommand } from "./commands/parser";
+import { registerSW } from "virtual:pwa-register";
 
 const engine = new AudioEngine();
 
@@ -38,4 +39,8 @@ input.addEventListener("keydown", (event) => {
   output.innerHTML += `<p>${response}</p>`;
 
   input.value = "";
+});
+
+registerSW({
+  immediate: true,
 });

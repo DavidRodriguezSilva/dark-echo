@@ -16,3 +16,5 @@ export function createSound(type: SoundsType): SoundGenerator {
       return new OceanSound();
   }
 }
+
+export { type SoundGenerator, type SoundsType } from "../types";
