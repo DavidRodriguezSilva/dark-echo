@@ -173,3 +173,6 @@ sketch
 # Navegadores y reportes de Playwright (tests de senal)
 /test-results
 /playwright-report
+# Capturas que Vitest en modo navegador adjunta a un test que falla
+/.vitest-attachments
+**/__screenshots__

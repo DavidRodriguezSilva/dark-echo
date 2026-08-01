@@ -1,45 +1,55 @@
 import { useRef, useState } from "react";
-import { AudioEngine } from "../audio/engine";
-import { executeCommand } from "../commands/parser";
+import { AmbientMixer } from "../audio/ambientMixer";
+import { createCommandRegistry } from "../commands/commands";
+import { executeCommand } from "../commands/executeCommand";
 
 interface OutputLine {
-  kind: "echo" | "response";
+  kind: "echo" | "response" | "error";
   text: string;
 }
 
-const HELP_LINES = [
+const WELCOME_LINES = [
   "play rain",
   "play wind",
   "play river",
   "play ocean",
+  "add <ambiente>",
   "stop",
   "volume 0.5",
-  "list",
+  "help",
 ];
 
 export function App() {
-  const engineRef = useRef<AudioEngine | null>(null);
-  if (!engineRef.current) {
-    engineRef.current = new AudioEngine();
+  const mixerRef = useRef<AmbientMixer | null>(null);
+  if (!mixerRef.current) {
+    mixerRef.current = new AmbientMixer();
   }
+  const registryRef = useRef(createCommandRegistry(mixerRef.current));
 
   const [lines, setLines] = useState<OutputLine[]>(
-    HELP_LINES.map((text) => ({ kind: "response", text }))
+    WELCOME_LINES.map((text) => ({ kind: "response", text }))
   );
   const [value, setValue] = useState("");
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
     const command = value;
-    const response = executeCommand(command, engineRef.current!);
+    setValue("");
+
+    const result = await executeCommand(command, registryRef.current);
+    if (!result) return;
+
+    if (result.effect === "clear") {
+      setLines([]);
+      return;
+    }
 
     setLines((previous) => [
       ...previous,
       { kind: "echo", text: command },
-      { kind: "response", text: response },
+      { kind: result.kind, text: result.message },
     ]);
-    setValue("");
   };
 
   return (
@@ -47,12 +57,16 @@ export function App() {
       <h1 className="mb-6 text-lg font-semibold text-foreground">dark-echo</h1>
 
       <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
-        <div className="min-h-[300px] space-y-1 font-mono text-sm">
+        <div className="min-h-[300px] space-y-1 font-mono text-sm whitespace-pre-wrap">
           {lines.map((line, index) => (
             <p
               key={index}
               className={
-                line.kind === "echo" ? "text-terminal-echo font-semibold" : "text-terminal-response"
+                line.kind === "echo"
+                  ? "font-semibold text-terminal-echo"
+                  : line.kind === "error"
+                    ? "text-terminal-error"
+                    : "text-terminal-response"
               }
             >
               {line.kind === "echo" ? `> ${line.text}` : line.text}

@@ -95,18 +95,18 @@
 
 ## 11. Gramática y vocabulario de comandos
 
-- [ ] 11.1 Implementar el descriptor de comando (nombre, alias, descripción, argumentos con tipo, obligatoriedad y dominio de valores) y el registro de comandos
-- [ ] 11.2 Implementar la validación de entrada contra el descriptor, garantizando que ningún comando se ejecuta con argumentos inválidos
-- [ ] 11.3 Implementar los mensajes de error accionables: argumento ausente, tipo incorrecto y valor fuera de rango, indicando en cada caso cómo corregirlo
-- [ ] 11.4 Implementar la sugerencia por distancia de edición ante nombres de comando desconocidos
-- [ ] 11.5 Implementar el reconocimiento de los prefijos `/` y `.` como forma abreviada de invocación
-- [ ] 11.6 Implementar el comando de ayuda, general y por comando, derivando su contenido de los descriptores
-- [ ] 11.7 Implementar `play <ambiente>` sustituyendo la mezcla y `play` sin argumento reanudando la conservada, con confirmación que indique explícitamente que sustituyó
-- [ ] 11.8 Implementar `add`, `remove`, `stop` conservando la composición, y `reset` vaciando la mezcla
-- [ ] 11.9 Implementar `volume` en sus dos formas, `list`, `status` y `clear`
-- [ ] 11.10 Implementar los comandos de escena (`save`, `load`, `list`, `delete`) y de tema
-- [ ] 11.11 Retirar `src/commands/parser.ts` y su lista de sonidos duplicada
-- [ ] 11.12 Cubrir con tests la validación, los errores, los alias, los prefijos, la entrada vacía y la semántica de sustituir frente a acumular
+- [x] 11.1 Implementar el descriptor de comando (nombre, alias, descripción, argumentos con tipo, obligatoriedad y dominio de valores) y el registro de comandos
+- [x] 11.2 Implementar la validación de entrada contra el descriptor, garantizando que ningún comando se ejecuta con argumentos inválidos
+- [x] 11.3 Implementar los mensajes de error accionables: argumento ausente, tipo incorrecto y valor fuera de rango, indicando en cada caso cómo corregirlo
+- [x] 11.4 Implementar la sugerencia por distancia de edición ante nombres de comando desconocidos
+- [x] 11.5 Implementar el reconocimiento de los prefijos `/` y `.` como forma abreviada de invocación
+- [x] 11.6 Implementar el comando de ayuda, general y por comando, derivando su contenido de los descriptores
+- [x] 11.7 Implementar `play <ambiente>` sustituyendo la mezcla y `play` sin argumento reanudando la conservada, con confirmación que indique explícitamente que sustituyó
+- [x] 11.8 Implementar `add`, `remove`, `stop` conservando la composición, y `reset` vaciando la mezcla
+- [x] 11.9 Implementar `volume` en sus dos formas, `list`, `status` y `clear`
+- [ ] 11.10 Implementar los comandos de escena (`save`, `load`, `list`, `delete`) y de tema (**pendiente**: depende de session-persistence, tarea 14, y de theming, tarea 13 — ninguna existe todavía)
+- [x] 11.11 Retirar `src/commands/parser.ts` y su lista de sonidos duplicada
+- [x] 11.12 Cubrir con tests la validación, los errores, los alias, los prefijos, la entrada vacía y la semántica de sustituir frente a acumular
 
 ## 12. Consola y panel de estado
 

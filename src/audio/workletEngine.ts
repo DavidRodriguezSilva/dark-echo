@@ -146,4 +146,8 @@ export class WorkletEngine {
   get activeLayerIds(): string[] {
     return [...this.layers.keys()];
   }
+
+  getLayerVolume(id: string): number | undefined {
+    return this.layers.get(id)?.volume;
+  }
 }
