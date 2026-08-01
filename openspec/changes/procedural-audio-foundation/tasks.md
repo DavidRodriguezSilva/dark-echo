@@ -1,15 +1,15 @@
 ## 1. Aplanado del repositorio
 
-- [ ] 1.1 Mover el contenido de `dark-echo/dark-echo/` a la raíz del repositorio con `git mv`, en un commit que solo mueva archivos, sin cambios de contenido
-- [ ] 1.2 Ajustar `.gitignore`, `.vscode/` y cualquier ruta que apunte al subdirectorio anterior
-- [ ] 1.3 Verificar que `pnpm install`, `pnpm dev` y `pnpm build` funcionan desde la raíz y que la aplicación sigue reproduciendo los cuatro ambientes actuales
+- [x] 1.1 Mover el contenido de `dark-echo/dark-echo/` a la raíz del repositorio con `git mv`, en un commit que solo mueva archivos, sin cambios de contenido
+- [x] 1.2 Ajustar `.gitignore`, `.vscode/` y cualquier ruta que apunte al subdirectorio anterior
+- [x] 1.3 Verificar que `pnpm install`, `pnpm dev` y `pnpm build` funcionan desde la raíz y que la aplicación sigue reproduciendo los cuatro ambientes actuales
 
 ## 2. Tooling y CI
 
-- [ ] 2.1 Declarar pnpm en `package.json` (`packageManager`) y fijar la versión de Node soportada
-- [ ] 2.2 Configurar ESLint y Prettier con las reglas del proyecto, y añadir los scripts `lint`, `format` y `typecheck`
-- [ ] 2.3 Instalar y configurar Vitest para el entorno Node, con el script `test`
-- [ ] 2.4 Añadir el workflow de CI que ejecuta `typecheck`, `lint` y `test`, y dejarlo en verde sobre el código existente
+- [x] 2.1 Declarar pnpm en `package.json` (`packageManager`) y fijar la versión de Node soportada
+- [x] 2.2 Configurar ESLint y Prettier con las reglas del proyecto, y añadir los scripts `lint`, `format` y `typecheck`
+- [x] 2.3 Instalar y configurar Vitest para el entorno Node, con el script `test`
+- [x] 2.4 Añadir el workflow de CI que ejecuta `typecheck`, `lint` y `test`, y dejarlo en verde sobre el código existente
 
 ## 3. Migración a React, Tailwind y contrato de tokens
 

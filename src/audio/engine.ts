@@ -27,10 +27,7 @@ export class AudioEngine {
         const output = event.outputBuffer.getChannelData(0);
 
         for (let i = 0; i < output.length; i++) {
-          output[i] = this.currentGenerator.nextSample(
-            this.time,
-            this.sampleRate
-          );
+          output[i] = this.currentGenerator.nextSample(this.time, this.sampleRate);
 
           this.time += 1 / this.sampleRate;
         }

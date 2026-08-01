@@ -1,5 +1,5 @@
-export type SoundsType = "rain" | "wind" | "river" | "ocean"
+export type SoundsType = "rain" | "wind" | "river" | "ocean";
 
 export interface SoundGenerator {
-  nextSample(time: number, sampleRate: number): number
+  nextSample(time: number, sampleRate: number): number;
 }
