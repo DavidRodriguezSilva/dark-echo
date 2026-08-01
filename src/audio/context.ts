@@ -16,12 +16,19 @@
 import noiseProcessorUrl from "./worklets/noiseProcessor.ts?worker&url";
 import modulatorProcessorUrl from "./worklets/modulatorProcessor.ts?worker&url";
 import denseGranularProcessorUrl from "./worklets/denseGranularProcessor.ts?worker&url";
+import waveEnvelopeProcessorUrl from "./worklets/waveEnvelopeProcessor.ts?worker&url";
 
 export const NOISE_PROCESSOR_NAME = "dark-echo-noise-processor";
 export const MODULATOR_PROCESSOR_NAME = "dark-echo-modulator-processor";
 export const DENSE_GRANULAR_PROCESSOR_NAME = "dark-echo-dense-granular-processor";
+export const WAVE_ENVELOPE_PROCESSOR_NAME = "dark-echo-wave-envelope-processor";
 
-const WORKLET_MODULE_URLS = [noiseProcessorUrl, modulatorProcessorUrl, denseGranularProcessorUrl];
+const WORKLET_MODULE_URLS = [
+  noiseProcessorUrl,
+  modulatorProcessorUrl,
+  denseGranularProcessorUrl,
+  waveEnvelopeProcessorUrl,
+];
 
 export type AudioContextResult =
   { ok: true; context: AudioContext } | { ok: false; reason: string };

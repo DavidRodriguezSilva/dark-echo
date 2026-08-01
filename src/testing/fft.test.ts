@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { binFrequencyHz, fftRadix2, magnitudeSpectrum } from "./fft";
+import { binFrequencyHz, fftRadix2, fractionOfEnergyInBand, magnitudeSpectrum } from "./fft";
 
 function sineWave(frequencyHz: number, sampleRateHz: number, length: number): Float64Array {
   const signal = new Float64Array(length);
@@ -56,5 +56,23 @@ describe("magnitudeSpectrum", () => {
     const peakEnergy = Math.max(...spectrum) ** 2;
 
     expect(peakEnergy / totalEnergy).toBeGreaterThan(0.9);
+  });
+});
+
+describe("fractionOfEnergyInBand", () => {
+  it("un tono puro dentro de la banda declarada da una fraccion cercana a 1", () => {
+    const sampleRateHz = 44100;
+    const signal = sineWave(2000, sampleRateHz, 65536);
+    const fraction = fractionOfEnergyInBand(signal, sampleRateHz, [1500, 2500], 65536);
+
+    expect(fraction).toBeGreaterThan(0.95);
+  });
+
+  it("un tono puro fuera de la banda declarada da una fraccion cercana a 0", () => {
+    const sampleRateHz = 44100;
+    const signal = sineWave(8000, sampleRateHz, 65536);
+    const fraction = fractionOfEnergyInBand(signal, sampleRateHz, [1500, 2500], 65536);
+
+    expect(fraction).toBeLessThan(0.05);
   });
 });

@@ -76,3 +76,36 @@ export function magnitudeSpectrum(real: ArrayLike<number>): Float64Array {
 export function binFrequencyHz(binIndex: number, fftSize: number, sampleRateHz: number): number {
   return (binIndex * sampleRateHz) / fftSize;
 }
+
+/**
+ * Fraccion de la energia espectral de `signal` que cae dentro de
+ * `[lowHz, highHz)`, medida sobre una ventana de `fftSize` muestras tomada
+ * del centro de la senal (evita transitorios de arranque).
+ */
+export function fractionOfEnergyInBand(
+  signal: ArrayLike<number>,
+  sampleRateHz: number,
+  [lowHz, highHz]: [number, number],
+  fftSize = 131072
+): number {
+  if (signal.length < fftSize) {
+    throw new Error(
+      `fractionOfEnergyInBand: la senal (${signal.length} muestras) es mas corta que fftSize (${fftSize})`
+    );
+  }
+
+  const start = Math.floor(signal.length / 2 - fftSize / 2);
+  const window = new Float64Array(fftSize);
+  for (let i = 0; i < fftSize; i++) window[i] = signal[start + i];
+
+  const spectrum = magnitudeSpectrum(window);
+  let total = 0;
+  let inBand = 0;
+  for (let bin = 0; bin < spectrum.length; bin++) {
+    const energy = spectrum[bin] * spectrum[bin];
+    total += energy;
+    const freq = binFrequencyHz(bin, fftSize, sampleRateHz);
+    if (freq >= lowHz && freq < highHz) inBand += energy;
+  }
+  return inBand / total;
+}

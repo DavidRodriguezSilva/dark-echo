@@ -10,6 +10,7 @@ import {
   DENSE_GRANULAR_PROCESSOR_NAME,
   MODULATOR_PROCESSOR_NAME,
   NOISE_PROCESSOR_NAME,
+  WAVE_ENVELOPE_PROCESSOR_NAME,
 } from "./context";
 import { LookaheadScheduler } from "./lookaheadScheduler";
 import { SparseVoicePlayer } from "./sparseVoicePlayer";
@@ -64,29 +65,7 @@ function compileContinuousLayer(
   const filter = context.createBiquadFilter();
   filter.type = declaration.filter.type;
   filter.Q.value = declaration.filter.q ?? 1;
-
-  let modulatorNode: AudioWorkletNode | null = null;
-  if (declaration.modulation) {
-    // El AudioParam suma su valor intrinseco al de cualquier entrada
-    // conectada: en 0, el modulador queda como unica fuente de la frecuencia.
-    filter.frequency.value = 0;
-    modulatorNode = new AudioWorkletNode(context, MODULATOR_PROCESSOR_NAME, {
-      numberOfInputs: 0,
-      numberOfOutputs: 1,
-      outputChannelCount: [1],
-      processorOptions: {
-        seed: (seed + 0x27d4eb2f) >>> 0,
-        minHz: declaration.modulation.minHz,
-        maxHz: declaration.modulation.maxHz,
-        basePeriodSeconds: declaration.modulation.basePeriodSeconds,
-        randomWalkWeight: declaration.modulation.randomWalkWeight,
-        randomWalkTimeConstantSeconds: declaration.modulation.randomWalkTimeConstantSeconds,
-      },
-    });
-    modulatorNode.connect(filter.frequency);
-  } else {
-    filter.frequency.value = declaration.filter.frequencyHz;
-  }
+  filter.frequency.value = declaration.filter.frequencyHz;
 
   const panner = context.createStereoPanner();
   panner.pan.value = declaration.stereo.pan;
@@ -96,9 +75,67 @@ function compileContinuousLayer(
   const output = context.createGain();
   output.gain.value = 0;
 
+  // Un nodo de ganancia propio para la modulacion de amplitud (oleaje),
+  // separado del `output` que controla el motor: si compartieran el mismo
+  // AudioParam, fijar el volumen de la capa se mezclaria con la oscilacion
+  // de la envolvente en lugar de dar el nivel exacto que se pidio. Solo se
+  // crea cuando hace falta.
+  const needsEnvelopeGain = declaration.modulation && declaration.modulationTarget === "gain";
+  const envelopeGain = needsEnvelopeGain ? context.createGain() : null;
+
+  let modulatorNode: AudioWorkletNode | null = null;
+  if (declaration.modulation) {
+    const modulation = declaration.modulation;
+    const targetParam =
+      declaration.modulationTarget === "gain" ? envelopeGain!.gain : filter.frequency;
+    // El AudioParam suma su valor intrinseco al de cualquier entrada
+    // conectada: en 0, el modulador queda como unica fuente del parametro.
+    if (declaration.modulationTarget === "gain") {
+      envelopeGain!.gain.value = 0;
+    } else {
+      filter.frequency.value = 0;
+    }
+
+    if (modulation.kind === "composite") {
+      modulatorNode = new AudioWorkletNode(context, MODULATOR_PROCESSOR_NAME, {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+        processorOptions: {
+          seed: (seed + 0x27d4eb2f) >>> 0,
+          minHz: modulation.min,
+          maxHz: modulation.max,
+          basePeriodSeconds: modulation.basePeriodSeconds,
+          randomWalkWeight: modulation.randomWalkWeight,
+          randomWalkTimeConstantSeconds: modulation.randomWalkTimeConstantSeconds,
+        },
+      });
+    } else {
+      modulatorNode = new AudioWorkletNode(context, WAVE_ENVELOPE_PROCESSOR_NAME, {
+        numberOfInputs: 0,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+        processorOptions: {
+          seed: (seed + 0x27d4eb2f) >>> 0,
+          minHz: modulation.min,
+          maxHz: modulation.max,
+          periodSeconds: modulation.periodSeconds,
+          riseFraction: modulation.riseFraction,
+          periodJitter: modulation.periodJitter,
+        },
+      });
+    }
+    modulatorNode.connect(targetParam);
+  }
+
   noise.connect(filter);
   filter.connect(panner);
-  panner.connect(output);
+  if (envelopeGain) {
+    panner.connect(envelopeGain);
+    envelopeGain.connect(output);
+  } else {
+    panner.connect(output);
+  }
 
   return {
     output,
@@ -107,6 +144,7 @@ function compileContinuousLayer(
       filter.disconnect();
       panner.disconnect();
       output.disconnect();
+      envelopeGain?.disconnect();
       modulatorNode?.disconnect();
     },
   };

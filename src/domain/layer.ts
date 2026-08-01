@@ -16,15 +16,35 @@ export interface StereoImage {
 }
 
 /** Modulacion continua de un parametro segun el modulador compuesto (design.md D5). */
-export interface ContinuousModulation {
-  minHz: number;
-  maxHz: number;
+export interface CompositeModulation {
+  kind: "composite";
+  min: number;
+  max: number;
   basePeriodSeconds: number;
   /** Peso del paseo aleatorio frente a la suma de senoides, en [0, 1]. */
   randomWalkWeight?: number;
   /** Constante de tiempo del paseo aleatorio, en segundos. */
   randomWalkTimeConstantSeconds?: number;
 }
+
+/**
+ * Modulacion por envolvente asimetrica (synthesis-reference, `oleaje`):
+ * ascenso mas rapido que la caida, a diferencia de la composite (simetrica
+ * en distribucion aunque no en trayectoria puntual).
+ */
+export interface WaveModulation {
+  kind: "wave";
+  min: number;
+  max: number;
+  periodSeconds: number;
+  riseFraction: number;
+  periodJitter?: number;
+}
+
+export type ContinuousModulation = CompositeModulation | WaveModulation;
+
+/** A que parametro nativo se conecta la salida del modulador. */
+export type ModulationTarget = "filterFrequency" | "gain";
 
 /**
  * Rango de parametros de una voz de gota (synthesis-reference, modelo
@@ -54,6 +74,8 @@ export interface ContinuousLayerDeclaration {
     q?: number;
   };
   modulation?: ContinuousModulation;
+  /** A que se conecta `modulation`. Por defecto, la frecuencia de corte del filtro. */
+  modulationTarget?: ModulationTarget;
   gain: number;
   stereo: StereoImage;
 }

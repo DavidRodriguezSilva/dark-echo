@@ -85,13 +85,13 @@
 
 ## 10. Portado de los ambientes restantes
 
-- [ ] 10.1 Declarar `wind` bajo el modelo de ráfagas de la referencia, sustituyendo el LFO sinusoidal por el modulador compuesto
-- [ ] 10.2 Declarar `river` bajo los modelos de flujo turbulento y burbujas
-- [ ] 10.3 Declarar `ocean` con la envolvente de oleaje asimétrica y el estallido de rompiente
-- [ ] 10.4 Añadir los tests espectrales, de periodicidad y de compatibilidad mono de los tres ambientes, ajustando sus criterios en la referencia
-- [ ] 10.5 Aplicar el protocolo de validación perceptual a los cuatro ambientes, con comparación A/B contra la versión anterior, y registrar el resultado y los defectos aceptados
-- [ ] 10.6 Revisar los umbrales de 9.4 con los cuatro renders reales y consolidarlos
-- [ ] 10.7 Retirar el motor y los generadores antiguos, incluido `ScriptProcessorNode`, y verificar que no queda código muerto
+- [x] 10.1 Declarar `wind` bajo el modelo de ráfagas de la referencia, sustituyendo el LFO sinusoidal por el modulador compuesto
+- [x] 10.2 Declarar `river` bajo los modelos de flujo turbulento y burbujas
+- [x] 10.3 Declarar `ocean` con la envolvente de oleaje asimétrica y el estallido de rompiente (nueva primitiva `dsp/asymmetricEnvelope.ts`, ya que ningún mecanismo existente daba ascenso rápido / caída lenta)
+- [x] 10.4 Añadir los tests espectrales, de periodicidad y de compatibilidad mono de los tres ambientes, ajustando sus criterios en la referencia
+- [ ] 10.5 Aplicar el protocolo de validación perceptual a los cuatro ambientes, con comparación A/B contra la versión anterior, y registrar el resultado y los defectos aceptados (**pendiente**: requiere escucha humana — el protocolo lo define expresamente como tal)
+- [x] 10.6 Revisar los umbrales de 9.4 con los cuatro renders reales y consolidarlos
+- [ ] 10.7 Retirar el motor y los generadores antiguos, incluido `ScriptProcessorNode`, y verificar que no queda código muerto (**pendiente**: depende de que la 10.5 confirme que el carácter sonoro se conserva o mejora antes de retirar el respaldo)
 
 ## 11. Gramática y vocabulario de comandos
 

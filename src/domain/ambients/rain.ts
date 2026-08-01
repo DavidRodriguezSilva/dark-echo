@@ -27,8 +27,9 @@ export const rain: AmbientDeclaration = {
       // real): con el peso por defecto la componente periodica dominaba la
       // autocorrelacion de la envolvente incluso en renders largos.
       modulation: {
-        minHz: 800,
-        maxHz: 3000,
+        kind: "composite",
+        min: 800,
+        max: 3000,
         basePeriodSeconds: 17,
         randomWalkWeight: 0.8,
         randomWalkTimeConstantSeconds: 17,

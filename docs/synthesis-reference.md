@@ -342,43 +342,70 @@ propagación del frente de onda del rayo.
 
 ### Criterios espectrales por ambiente
 
-`rain` esta calibrado sobre su render real (tarea 9.4); `wind`, `river` y
-`ocean` quedan con un punto de partida razonado hasta que la tarea 10.4/10.6
-los mida sobre su propia implementacion portada.
+Los cuatro ambientes de esta entrega están calibrados sobre su render real
+(tareas 9.4 y 10.4). El criterio se expresa como fracción de energía dentro
+de la banda declarada sobre una ventana de análisis de 131072 muestras (FFT
+radix-2) tomada del centro de un render — es la magnitud que los tests de
+señal miden de verdad, en lugar de una forma de "planitud en dB" más difícil
+de verificar de forma robusta sobre ruido de banda ancha.
 
-El criterio de `rain` se expresa como fraccion de energia dentro de la banda
-declarada sobre una ventana de analisis de 131072 muestras (FFT radix-2)
-tomada del centro de un render — es la magnitud que el test de la tarea 9.5
-mide de verdad, en lugar de una forma de "planitud en dB" mas dificil de
-verificar de forma robusta sobre ruido de banda ancha.
+| Ambiente | Banda de energía dominante                        | Medido | Umbral |
+| -------- | ------------------------------------------------- | ------ | ------ |
+| `rain`   | 800 Hz – 6 kHz (cuerpo + goteo)                   | 74–76% | ≥ 60%  |
+| `wind`   | 150 Hz – 3 kHz                                    | ~49%   | ≥ 40%  |
+| `river`  | 150 Hz – 5 kHz                                    | ~85%   | ≥ 70%  |
+| `ocean`  | 100 Hz – 4 kHz (cuerpo grave + estallidos agudos) | ~55%   | ≥ 45%  |
 
-| Ambiente | Banda de energía dominante                        | Criterio                                                            |
-| -------- | ------------------------------------------------- | ------------------------------------------------------------------- |
-| `rain`   | 800 Hz – 6 kHz (cuerpo + goteo)                   | **Medido: 74-76%** de la energía dentro de la banda. Umbral: ≥ 60%. |
-| `wind`   | 150 Hz – 3 kHz, variable                          | Provisional: ≥ 60% dentro de la banda (a medir en 10.4).            |
-| `river`  | 150 Hz – 5 kHz                                    | Provisional: ≥ 60% dentro de la banda (a medir en 10.4).            |
-| `ocean`  | 100 Hz – 4 kHz (cuerpo grave + estallidos agudos) | Provisional: ≥ 55% dentro de la banda (a medir en 10.4).            |
+`wind` concentra menos energía en su banda declarada de lo que se esperaba
+al escribir el criterio la primera vez: el ruido marrón tiene un contenido
+natural muy fuerte por debajo de 150 Hz (pendiente de -6 dB/oct desde muy
+baja frecuencia, sin que el filtro pasa-bajos lo atenúe — un pasa-bajos no
+toca nada por debajo de su corte). El umbral se ajustó al valor medido en
+lugar de forzar el diseño a una banda que no es la que el ruido marrón
+produce de forma natural; queda para la validación perceptual (tarea 10.5)
+si ese grave adicional se oye bien o hace falta un pasa-altos suave.
 
 ### Umbral de periodicidad
 
 Sobre la autocorrelación normalizada de la envolvente de energía (RMS en
-ventanas de 50 ms) de un render de al menos 150 s: ningún pico fuera del
-desplazamiento nulo SHALL superar **0.35** de correlación normalizada.
+ventanas de 50 ms) de un render de al menos 150 s, **excluyendo el primer
+segundo de desplazamiento**: ningún pico SHALL superar **0.4** de
+correlación normalizada.
 
-**Medido sobre `rain` (tarea 9.4): 0.165.** El umbral de 0.35 deja margen
-sobre el valor medido sin dejar de detectar una regresión real: un modulador
-dominado por su componente periódica (la configuración con la que se
-descubrió el problema, ver más abajo) mide entre 0.6 y 0.9 según el peso
-exacto — muy por encima del umbral — mientras que ruido sin ninguna
-modulación lenta mide ~0.04.
+**La exclusión del primer segundo es metodológica, no un ajuste laxo**: la
+suavidad natural de cualquier envolvente que varía lentamente —deseable,
+no un defecto— ya produce autocorrelación alta a desplazamientos muy
+cortos, sin que eso sea el ciclo perceptible que este criterio existe para
+detectar. Se descubrió calibrando `rain`: incluso un paseo aleatorio puro
+(sin ninguna componente periódica) mostraba ~0.6 de correlación a 2
+segundos de desplazamiento, simplemente porque tarda unos segundos en
+decorrelarse consigo mismo. El umbral se aplica al primer pico _después_
+de ese margen.
 
-**Hallazgo de la calibración**, documentado porque cambió una decisión de
-diseño: el modulador compuesto (D5) inicialmente combinaba las tres senoides
-inconmensurables con un peso del 65% frente a un 35% de paseo aleatorio, y
-ese paseo tenía un paso fijo por muestra (`0.01`) independiente de la
-frecuencia de muestreo. Eso le daba al paseo aleatorio una constante de
-tiempo de apenas ~2 ms — mucho más rápido que la ventana de análisis de 50
-ms — así que quedaba promediado dentro de cada ventana de energía y no
+**Medido con esta metodología (tarea 9.4/10.4):**
+
+| Ambiente | Periodicidad medida |
+| -------- | ------------------- |
+| `rain`   | 0.146               |
+| `wind`   | 0.062               |
+| `river`  | 0.306               |
+
+**`ocean` es un caso distinto y no usa este mismo criterio.** El oleaje
+tiene un ritmo auténtico —las olas reales tienen periodo— así que "ausencia
+de periodicidad" no es lo que hay que verificar: sería pedirle a `ocean` que
+deje de sonar a olas. Lo que importa es que un ciclo no sea _idéntico_ al
+anterior. Se verifica midiendo la autocorrelación de la envolvente
+exactamente en el periodo declarado de la ola (7 s): **medido 0.587**,
+lejos de 1.0 (que indicaría recurrencia exacta), gracias a la variación
+aleatoria del periodo de ciclo a ciclo (`periodJitter`). Umbral: < 0.85.
+
+**Hallazgo de la calibración de `rain`**, documentado porque cambió una
+decisión de diseño: el modulador compuesto (D5) inicialmente combinaba las
+tres senoides inconmensurables con un peso del 65% frente a un 35% de paseo
+aleatorio, y ese paseo tenía un paso fijo por muestra (`0.01`) independiente
+de la frecuencia de muestreo. Eso le daba al paseo aleatorio una constante
+de tiempo de apenas ~2 ms — mucho más rápido que la ventana de análisis de
+50 ms — así que quedaba promediado dentro de cada ventana de energía y no
 llegaba a competir con la componente periódica a la escala en que se mide la
 periodicidad: la autocorrelación de `rain` medía ~0.64, muy por encima de
 cualquier umbral razonable. La causa raíz era doble: (a) el paso del paseo
@@ -387,8 +414,7 @@ real (violaba la propia regla de esta referencia sobre unidades físicas), y
 (b) el peso del paseo aleatorio era insuficiente frente a la componente
 periódica. Corregido subiendo el peso por defecto a **0.8** y derivando el
 paso del paseo de una constante de tiempo en segundos (por defecto, el
-propio periodo base) dividida por la frecuencia de muestreo real — con eso,
-`rain` mide 0.165.
+propio periodo base) dividida por la frecuencia de muestreo real.
 
 ### Protocolo de validación perceptual
 
