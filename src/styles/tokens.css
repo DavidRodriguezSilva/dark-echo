@@ -134,6 +134,25 @@
 }
 
 /* ---------------------------------------------------------------- *
+ * Tema "ambar" — sobreescribe solo lo que lo distingue (theming, tarea
+ * 13.2): demuestra que la herencia del base funciona, porque los tokens de
+ * dominio (--terminal-prompt, --terminal-cursor, etc.) referencian
+ * `var(--primary)` y recogen este cambio sin declararse aqui.
+ * ---------------------------------------------------------------- */
+
+[data-theme="ambar"] {
+  --primary: oklch(0.8 0.15 70);
+  --primary-foreground: oklch(0.19 0.03 70);
+  --ring: oklch(0.8 0.15 70);
+}
+
+[data-theme="ambar"].light {
+  --primary: oklch(0.55 0.15 70);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.55 0.15 70);
+}
+
+/* ---------------------------------------------------------------- *
  * Exposicion a Tailwind
  *
  * `inline` sustituye el valor en la utilidad en lugar de emitir otra

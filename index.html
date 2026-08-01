@@ -5,6 +5,33 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>dark-echo</title>
+    <!--
+      Aplica tema y esquema antes del primer dibujado (theming, tarea 13.6):
+      un script de modulo se difiere hasta despues de parsear el HTML, lo que
+      dejaria una ventana en la que se pinta el esquema por defecto antes de
+      corregirlo. Este script clasico y sincrono corre inline, sin esperar.
+      Usa a mano la misma clave y formato que platform/appearance.ts porque
+      no puede esperar a que el grafo de modulos cargue para importarlo.
+    -->
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem("dark-echo.appearance");
+          var envelope = raw ? JSON.parse(raw) : null;
+          var preference = envelope && envelope.version === 1 ? envelope.data : null;
+          var scheme =
+            (preference && preference.scheme) ||
+            (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+          var themeId = (preference && preference.themeId) || "default";
+
+          document.documentElement.dataset.theme = themeId;
+          document.documentElement.classList.toggle("light", scheme === "light");
+        } catch {
+          // Almacenamiento no disponible o corrupto: se queda en el
+          // esquema oscuro por defecto, que ya trae `:root` sin JavaScript.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

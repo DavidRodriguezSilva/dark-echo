@@ -104,7 +104,7 @@
 - [x] 11.7 Implementar `play <ambiente>` sustituyendo la mezcla y `play` sin argumento reanudando la conservada, con confirmación que indique explícitamente que sustituyó
 - [x] 11.8 Implementar `add`, `remove`, `stop` conservando la composición, y `reset` vaciando la mezcla
 - [x] 11.9 Implementar `volume` en sus dos formas, `list`, `status` y `clear`
-- [ ] 11.10 Implementar los comandos de escena (`save`, `load`, `list`, `delete`) y de tema (**pendiente**: depende de session-persistence, tarea 14, y de theming, tarea 13 — ninguna existe todavía)
+- [ ] 11.10 Implementar los comandos de escena (`save`, `load`, `list`, `delete`) y de tema (**parcial**: los comandos `theme`/`scheme` quedaron implementados en la tarea 13.3, junto con el resto de theming; los de escena siguen pendientes de session-persistence, tarea 14)
 - [x] 11.11 Retirar `src/commands/parser.ts` y su lista de sonidos duplicada
 - [x] 11.12 Cubrir con tests la validación, los errores, los alias, los prefijos, la entrada vacía y la semántica de sustituir frente a acumular
 
@@ -123,15 +123,15 @@
 
 ## 13. Apariencia y temas
 
-- [ ] 13.1 Implementar el registro de temas declarados y derivar de él el listado que expone la aplicación
-- [ ] 13.2 Declarar un segundo tema sobreescribiendo solo los tokens que lo distinguen, para demostrar que la herencia del base funciona
-- [ ] 13.3 Implementar la selección de tema y de esquema por comando y por control táctil, aplicada sin recargar
-- [ ] 13.4 Verificar que un cambio de tema durante la reproducción no interrumpe el audio ni reinicia ninguna capa
-- [ ] 13.5 Persistir tema y esquema como parte de la configuración, y adoptar en el primer arranque la preferencia de esquema del sistema operativo
-- [ ] 13.6 Aplicar el tema antes del primer dibujado para que no se perciba un destello de otro esquema al cargar
-- [ ] 13.7 Implementar la verificación automatizada de contraste AA sobre las declaraciones de tokens, para cada par de superficie y texto y en ambos esquemas, e integrarla en CI
-- [ ] 13.8 Documentar qué cubre y qué no cubre esa verificación, y revisar los temas también a ojo
-- [ ] 13.9 Verificar que todos los temas y tipografías están empaquetados y que cambiar de tema sin conexión no produce peticiones de red
+- [x] 13.1 Implementar el registro de temas declarados y derivar de él el listado que expone la aplicación
+- [x] 13.2 Declarar un segundo tema sobreescribiendo solo los tokens que lo distinguen, para demostrar que la herencia del base funciona
+- [x] 13.3 Implementar la selección de tema y de esquema por comando y por control táctil, aplicada sin recargar
+- [x] 13.4 Verificar que un cambio de tema durante la reproducción no interrumpe el audio ni reinicia ninguna capa
+- [x] 13.5 Persistir tema y esquema como parte de la configuración, y adoptar en el primer arranque la preferencia de esquema del sistema operativo
+- [x] 13.6 Aplicar el tema antes del primer dibujado para que no se perciba un destello de otro esquema al cargar
+- [x] 13.7 Implementar la verificación automatizada de contraste AA sobre las declaraciones de tokens, para cada par de superficie y texto y en ambos esquemas, e integrarla en CI
+- [ ] 13.8 Documentar qué cubre y qué no cubre esa verificación, y revisar los temas también a ojo (**parcial**: documentación hecha en `tokens.contrast.test.ts`; la revisión "a ojo" queda pendiente — requiere mirar la aplicación, no soy quien debe juzgar eso)
+- [x] 13.9 Verificar que todos los temas y tipografías están empaquetados y que cambiar de tema sin conexión no produce peticiones de red
 
 ## 14. Persistencia
 

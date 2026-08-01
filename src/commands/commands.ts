@@ -9,14 +9,29 @@ function fromMixerResult(result: { ok: boolean; message: string }): CommandResul
 }
 
 /**
+ * Lo que los comandos `theme`/`scheme` necesitan de la apariencia, sin que
+ * `commands/` dependa de `platform/` directamente (design.md D6): quien
+ * construye el registro (ui/) inyecta un adaptador sobre el store real.
+ */
+export interface AppearanceController {
+  list(): { id: string; label: string }[];
+  getCurrent(): { themeId: string; scheme: "dark" | "light" };
+  set(preference: { themeId: string; scheme: "dark" | "light" }): void;
+}
+
+/**
  * Construye el registro de comandos con sus handlers reales, sobre un
  * `AmbientMixer` (command-console, "Vocabulario de comandos y semantica de
- * la mezcla"). `scene` y `theme` quedan fuera: dependen de session-persistence
- * (tarea 14) y theming (tarea 13), que todavia no existen.
+ * la mezcla") y un `AppearanceController` (theming, "Selección de tema en
+ * caliente"). `scene` queda fuera: depende de session-persistence (tarea 14).
  */
-export function createCommandRegistry(mixer: AmbientMixer): CommandRegistry {
+export function createCommandRegistry(
+  mixer: AmbientMixer,
+  appearance: AppearanceController
+): CommandRegistry {
   const registry = new CommandRegistry();
   const ambientIds = listAmbients().map((a) => a.id);
+  const themeIds = appearance.list().map((t) => t.id);
 
   const descriptors: CommandDescriptor[] = [
     {
@@ -101,6 +116,37 @@ export function createCommandRegistry(mixer: AmbientMixer): CommandRegistry {
       description: "Vacía la salida de la consola sin afectar a la reproducción.",
       forms: [{ args: [] }],
       handler: () => ({ kind: "response", message: "", effect: "clear" }),
+    },
+    {
+      name: "theme",
+      aliases: [],
+      description: "Selecciona el tema visual, o lista los disponibles sin argumento.",
+      forms: [{ args: [] }, { args: [{ name: "tema", type: "enum", values: themeIds }] }],
+      handler: (args) => {
+        if (!("tema" in args)) {
+          return {
+            kind: "response",
+            message: appearance
+              .list()
+              .map((t) => `${t.id} — ${t.label}`)
+              .join("\n"),
+          };
+        }
+        const current = appearance.getCurrent();
+        appearance.set({ themeId: args.tema as string, scheme: current.scheme });
+        return { kind: "response", message: `Tema: ${args.tema}` };
+      },
+    },
+    {
+      name: "scheme",
+      aliases: [],
+      description: "Selecciona el esquema claro u oscuro.",
+      forms: [{ args: [{ name: "esquema", type: "enum", values: ["dark", "light"] }] }],
+      handler: (args) => {
+        const current = appearance.getCurrent();
+        appearance.set({ themeId: current.themeId, scheme: args.esquema as "dark" | "light" });
+        return { kind: "response", message: `Esquema: ${args.esquema}` };
+      },
     },
     {
       name: "help",
