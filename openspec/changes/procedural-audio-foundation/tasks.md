@@ -53,18 +53,18 @@
 
 ## 7. Motor de audio sobre `AudioWorklet`
 
-- [ ] 7.1 Crear el `AudioWorkletProcessor` de fuentes de ruido sobre las primitivas de la tarea 6, y su carga por URL en el build
-- [ ] 7.2 Configurar el precache del módulo del worklet en `vite-plugin-pwa`, comprobando que aparece en el manifiesto del service worker generado
-- [ ] 7.3 Implementar el ciclo de vida del contexto de audio: creación diferida al primer comando que requiera sonido, reanudación del estado suspendido e informe del resultado
-- [ ] 7.4 Implementar el fallo explícito cuando el entorno no soporta la síntesis requerida, con el estado del sistema reflejando que no hay reproducción
-- [ ] 7.5 Implementar el compilador de capas: traducción de la declaración de una capa al subgrafo de nodos nativos más worklets, derivando los coeficientes de la frecuencia real del contexto
-- [ ] 7.6 Implementar la mezcla multicapa con volumen independiente por capa y volumen maestro que preserva las proporciones relativas
-- [ ] 7.7 Implementar la salida estéreo con colocación y anchura por capa, y la decorrelación por flujos de ruido independientes según D16
-- [ ] 7.8 Implementar el límite máximo de capas simultáneas, rechazando la incorporación con un mensaje que indique el límite y dejando la mezcla intacta
-- [ ] 7.9 Implementar las transiciones de entrada y salida partiendo de la amplitud instantánea vigente, y verificar por escucha que no hay clics al iniciar, detener, añadir ni retirar capas
-- [ ] 7.10 Implementar la limitación de la salida para que la suma de capas no produzca distorsión por recorte
-- [ ] 7.11 Implementar el planificador de anticipación para eventos esporádicos según D2, con posición estéreo distinta en cada disparo
-- [ ] 7.12 Implementar el `AudioWorkletProcessor` de granulación densa con banco de voces para eventos de alta densidad
+- [x] 7.1 Crear el `AudioWorkletProcessor` de fuentes de ruido sobre las primitivas de la tarea 6, y su carga por URL en el build
+- [x] 7.2 Configurar el precache del módulo del worklet en `vite-plugin-pwa`, comprobando que aparece en el manifiesto del service worker generado
+- [x] 7.3 Implementar el ciclo de vida del contexto de audio: creación diferida al primer comando que requiera sonido, reanudación del estado suspendido e informe del resultado
+- [x] 7.4 Implementar el fallo explícito cuando el entorno no soporta la síntesis requerida, con el estado del sistema reflejando que no hay reproducción
+- [x] 7.5 Implementar el compilador de capas: traducción de la declaración de una capa al subgrafo de nodos nativos más worklets, derivando los coeficientes de la frecuencia real del contexto
+- [x] 7.6 Implementar la mezcla multicapa con volumen independiente por capa y volumen maestro que preserva las proporciones relativas
+- [x] 7.7 Implementar la salida estéreo con colocación y anchura por capa, y la decorrelación por flujos de ruido independientes según D16
+- [x] 7.8 Implementar el límite máximo de capas simultáneas, rechazando la incorporación con un mensaje que indique el límite y dejando la mezcla intacta
+- [x] 7.9 Implementar las transiciones de entrada y salida partiendo de la amplitud instantánea vigente, y verificar por escucha que no hay clics al iniciar, detener, añadir ni retirar capas
+- [x] 7.10 Implementar la limitación de la salida para que la suma de capas no produzca distorsión por recorte
+- [x] 7.11 Implementar el planificador de anticipación para eventos esporádicos según D2, con posición estéreo distinta en cada disparo
+- [x] 7.12 Implementar el `AudioWorkletProcessor` de granulación densa con banco de voces para eventos de alta densidad
 
 ## 8. Modelo declarativo de ambientes y `rain`
 
