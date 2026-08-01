@@ -44,8 +44,8 @@
 
 ## 6. Núcleo de DSP puro y determinista
 
-- [ ] 6.1 Implementar el PRNG sembrado y retirar `Math.random()` del núcleo de DSP; test de que la misma semilla produce la misma secuencia y semillas distintas producen secuencias distintas
-- [ ] 6.2 Implementar los generadores de ruido (blanco, marrón y los que exija la referencia) como funciones puras sembradas, con tests de sus características estadísticas
+- [x] 6.1 Implementar el PRNG sembrado y retirar `Math.random()` del núcleo de DSP; test de que la misma semilla produce la misma secuencia y semillas distintas producen secuencias distintas
+- [x] 6.2 Implementar los generadores de ruido (blanco, marrón y los que exija la referencia) como funciones puras sembradas, con tests de sus características estadísticas
 - [ ] 6.3 Implementar el modulador compuesto de D5: suma de osciladores de periodos inconmensurables más paseo aleatorio filtrado, con test de que la salida permanece en el rango declarado
 - [ ] 6.4 Implementar la voz de gota según 5.1 (impacto más burbuja con decaimiento y deriva de tono), con test de que su frecuencia fundamental sigue la relación declarada para un radio dado
 - [ ] 6.5 Implementar el generador de eventos como proceso de Poisson sembrado, con test de que los intervalos caen dentro del rango declarado y no son constantes

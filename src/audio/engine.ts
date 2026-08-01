@@ -1,4 +1,5 @@
 import type { SoundGenerator, SoundsType } from "../domain/types";
+import { mulberry32, randomSeed, type Rng } from "../dsp/prng";
 import { createSound } from "./sounds";
 
 export class AudioEngine {
@@ -6,13 +7,17 @@ export class AudioEngine {
   private node: ScriptProcessorNode | null = null;
   private gain: GainNode | null = null;
 
-  private currentGenerator: SoundGenerator = createSound("rain");
+  // Cada sesion de reproduccion parte de un estado distinto (D4): la semilla
+  // se deriva una sola vez por instancia de motor, no por sonido reproducido.
+  private readonly rng: Rng = mulberry32(randomSeed());
+
+  private currentGenerator: SoundGenerator = createSound("rain", this.rng);
   private volume = 0.5;
   private time = 0;
   private sampleRate = 44100;
 
   async start(type: SoundsType) {
-    this.currentGenerator = createSound(type);
+    this.currentGenerator = createSound(type, this.rng);
 
     if (!this.context) {
       this.context = new AudioContext();

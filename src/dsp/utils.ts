@@ -1,3 +1,5 @@
+import type { Rng } from "./prng";
+
 export function clamp(value: number, min = -1, max = 1): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -7,7 +9,7 @@ export function lfo(time: number, speed: number, min: number, max: number): numb
   return min + normalized * (max - min);
 }
 
-export function smoothRandom(previous: number, amount = 0.005): number {
-  const target = Math.random() * 2 - 1;
+export function smoothRandom(previous: number, rng: Rng, amount = 0.005): number {
+  const target = rng() * 2 - 1;
   return previous + (target - previous) * amount;
 }
