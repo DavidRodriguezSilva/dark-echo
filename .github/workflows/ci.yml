@@ -40,5 +40,8 @@ jobs:
       - name: Tests
         run: pnpm test
 
+      - name: Contrato de tokens
+        run: pnpm check:tokens
+
       - name: Build
         run: pnpm build

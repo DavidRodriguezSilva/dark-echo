@@ -13,16 +13,16 @@
 
 ## 3. Migración a React, Tailwind y contrato de tokens
 
-- [ ] 3.1 Añadir `react`, `react-dom`, `@vitejs/plugin-react` y sus tipos; registrar el plugin en `vite.config.ts`
-- [ ] 3.2 Añadir Tailwind v4 con `@tailwindcss/vite` e inicializar shadcn/ui con `cssVariables` activado
-- [ ] 3.3 Escribir el archivo de tokens base **dark-first** en OKLCH: superficies con su texto asociado, borde, entrada, foco, énfasis, destructivo, tipografías, radio, espaciado y sombras, expuestos con `@theme inline`
-- [ ] 3.4 Declarar los tokens de dominio (prompt, eco, respuesta, error, cursor, capa activa, nivel) con un token base como valor por defecto
-- [ ] 3.5 Configurar el eje de esquema con `.dark` y `@custom-variant dark (&:is(.dark *))`, y el eje de tema con `data-theme` sobre el elemento raíz
-- [ ] 3.6 Sustituir `src/main.ts` por `src/main.tsx` y actualizar `index.html`, eliminando el bootstrap por `innerHTML`
-- [ ] 3.7 Eliminar `src/style.css`, huérfano en el prototipo, y reemplazar `src/styles/index.css` por la capa base de Tailwind más el archivo de tokens
-- [ ] 3.8 Reconstruir la interfaz actual como componentes React consumiendo solo tokens, sobre el motor y el parser existentes sin modificarlos
-- [ ] 3.9 Añadir la verificación automatizada que falla si un componente contiene un color, radio o sombra literal en lugar de un token
-- [ ] 3.10 Verificar que los cuatro ambientes, `stop`, `volume` y `list` se comportan igual que antes de la migración
+- [x] 3.1 Añadir `react`, `react-dom`, `@vitejs/plugin-react` y sus tipos; registrar el plugin en `vite.config.ts`
+- [x] 3.2 Añadir Tailwind v4 con `@tailwindcss/vite` e inicializar shadcn/ui con `cssVariables` activado
+- [x] 3.3 Escribir el archivo de tokens base **dark-first** en OKLCH: superficies con su texto asociado, borde, entrada, foco, énfasis, destructivo, tipografías, radio, espaciado y sombras, expuestos con `@theme inline`
+- [x] 3.4 Declarar los tokens de dominio (prompt, eco, respuesta, error, cursor, capa activa, nivel) con un token base como valor por defecto
+- [x] 3.5 Configurar el eje de esquema (oscuro por defecto en `:root`, `.light` como sobreescritura) y el eje de tema con `data-theme` sobre el elemento raíz
+- [x] 3.6 Sustituir `src/main.ts` por `src/main.tsx` y actualizar `index.html`, eliminando el bootstrap por `innerHTML`
+- [x] 3.7 Eliminar `src/style.css`, huérfano en el prototipo, y reemplazar `src/styles/index.css` por la capa base de Tailwind más el archivo de tokens
+- [x] 3.8 Reconstruir la interfaz actual como componentes React consumiendo solo tokens, sobre el motor y el parser existentes sin modificarlos
+- [x] 3.9 Añadir la verificación automatizada que falla si un componente contiene un color, radio o sombra literal en lugar de un token
+- [x] 3.10 Verificar que los cuatro ambientes, `stop`, `volume` y `list` se comportan igual que antes de la migración
 
 ## 4. Estructura en capas
 

@@ -172,7 +172,7 @@ Estructura del sistema de apariencia, siguiendo el modelo de tweakcn:
 1. **Conjunto base** de tokens semánticos en variables CSS, en OKLCH, expuesto a Tailwind con `@theme inline` para que cada token sea utilizable como utilidad.
 2. **Tokens de dominio** propios del producto —prompt, eco de la entrada, respuesta, error, cursor, capa activa, nivel— cuyo valor por defecto es un token base (`--terminal-error: var(--destructive)`). Un tema puede ignorarlos por completo y seguir siendo coherente.
 3. **Temas** como capas que redefinen solo los tokens que los distinguen. Lo que no declaran lo heredan del base.
-4. **Dos dimensiones independientes**: el tema, en un atributo `data-theme` sobre el elemento raíz, y el esquema claro/oscuro, con la clase `.dark` y `@custom-variant dark (&:is(.dark *))`. Cada tema declara sus valores para ambos esquemas.
+4. **Dos dimensiones independientes**: el tema, en un atributo `data-theme` sobre el elemento raíz, y el esquema claro/oscuro. El esquema oscuro es el valor por defecto de `:root`, sin clase ni JavaScript — es el resultado correcto incluso antes de que corra el script de preferencia (D13, tarea 13.6) —, y la clase `.light` lo sobreescribe. `@custom-variant dark (&:is(.dark *))` queda disponible para el caso puntual en que un componente necesite condicionar algo al esquema oscuro explícitamente. Cada tema declara sus valores para ambos esquemas.
 
 *Por qué dos dimensiones y no solo `.dark`:* la salida de tweakcn cubre un tema en dos esquemas. Con varios temas hace falta un eje más, o los temas se multiplicarían en clases. `data-theme` × `.dark` mantiene ambos ejes ortogonales y deja la salida de tweakcn utilizable casi tal cual como punto de partida de cada tema.
 
