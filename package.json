@@ -18,6 +18,7 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:signal": "vitest run --config vitest.signal.config.ts",
     "check:tokens": "node scripts/check-tokens.ts"
   },
   "devDependencies": {
@@ -27,9 +28,12 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
     "@vitejs/plugin-react": "^6.0.5",
+    "@vitest/browser": "4.1.10",
+    "@vitest/browser-playwright": "^4.1.10",
     "eslint": "^10.8.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.8.0",
+    "playwright": "^1.62.1",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.3.3",
     "typescript": "~6.0.2",

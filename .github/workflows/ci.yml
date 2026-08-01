@@ -40,6 +40,12 @@ jobs:
       - name: Tests
         run: pnpm test
 
+      - name: Instalar Chromium para los tests de senal
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Tests de senal (renderizado real de Web Audio)
+        run: pnpm test:signal
+
       - name: Contrato de tokens
         run: pnpm check:tokens
 

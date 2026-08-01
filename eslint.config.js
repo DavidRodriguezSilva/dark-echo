@@ -30,8 +30,13 @@ export default tseslint.config(
   // dependen de nada; audio/ solo de domain/ y dsp/; commands/ no conoce
   // platform/, styles/ ni ui/. La comprobacion explicita que exige la tarea
   // 4.3 es que dsp/, domain/ y audio/ no importen nada de ui/.
+  //
+  // Los tests quedan fuera: un test de senal de un ambiente declarado en
+  // domain/ necesita renderizarlo de verdad, y eso exige audio/ (design.md
+  // D8). La regla protege el codigo de produccion, no la verificacion.
   {
     files: ["src/domain/**/*.{ts,tsx}", "src/dsp/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.ts", "**/*.signal.test.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -60,6 +65,7 @@ export default tseslint.config(
   },
   {
     files: ["src/audio/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.ts", "**/*.signal.test.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -81,6 +87,7 @@ export default tseslint.config(
   },
   {
     files: ["src/commands/**/*.{ts,tsx}"],
+    ignores: ["**/*.test.ts", "**/*.signal.test.ts"],
     rules: {
       "no-restricted-imports": [
         "error",

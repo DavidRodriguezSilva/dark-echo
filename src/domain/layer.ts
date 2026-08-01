@@ -20,6 +20,10 @@ export interface ContinuousModulation {
   minHz: number;
   maxHz: number;
   basePeriodSeconds: number;
+  /** Peso del paseo aleatorio frente a la suma de senoides, en [0, 1]. */
+  randomWalkWeight?: number;
+  /** Constante de tiempo del paseo aleatorio, en segundos. */
+  randomWalkTimeConstantSeconds?: number;
 }
 
 /**

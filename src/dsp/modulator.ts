@@ -7,6 +7,16 @@ import { smoothRandom } from "./utils";
  * periodos en proporciones inconmensurables entre si -- la suma nunca vuelve
  * a un estado identico -- con un paseo aleatorio filtrado, que aporta la
  * deriva no ciclica que ninguna suma de periodicas puede dar.
+ *
+ * El paso del paseo aleatorio se deriva de una constante de tiempo fisica
+ * (segundos) y de la frecuencia de muestreo real (D15), no de un numero
+ * magico por llamada: con un paso fijo e independiente del sample rate, el
+ * paseo se decorrelaba en pocos milisegundos -- mucho mas rapido que el
+ * periodo base -- y queda promediado dentro de cualquier ventana de energia
+ * razonable, dejando el componente periodico como el unico que sobrevive a
+ * escala de envolvente. Calibrado en la tarea 9.4 sobre el render real de
+ * `rain`: verificado que una constante de tiempo del orden del periodo base
+ * es la que de verdad rompe la periodicidad medida por autocorrelacion.
  */
 
 // Multiplicadores irracionales fijos: la razon entre dos cualesquiera de
@@ -21,14 +31,27 @@ export interface ModulatorOptions {
   basePeriodSeconds: number;
   /** Peso del paseo aleatorio frente a la suma de senoides, en [0, 1]. */
   randomWalkWeight?: number;
-  /** Paso del paseo aleatorio por llamada (ver smoothRandom). */
-  randomWalkStep?: number;
+  /** Constante de tiempo del paseo aleatorio, en segundos. */
+  randomWalkTimeConstantSeconds?: number;
+  /** Frecuencia de muestreo real del contexto, para derivar el paso del paseo. */
+  sampleRate: number;
 }
 
 export type Modulator = (time: number) => number;
 
 export function createModulator(rng: Rng, options: ModulatorOptions): Modulator {
-  const { min, max, basePeriodSeconds, randomWalkWeight = 0.35, randomWalkStep = 0.01 } = options;
+  const {
+    min,
+    max,
+    basePeriodSeconds,
+    randomWalkWeight = 0.5,
+    randomWalkTimeConstantSeconds = basePeriodSeconds / 4,
+    sampleRate,
+  } = options;
+
+  // Aproximacion de primer orden del paso que da una constante de tiempo tau
+  // a un proceso exponencialmente suavizado: paso = dt / tau, con dt = 1/fs.
+  const randomWalkStep = 1 / (randomWalkTimeConstantSeconds * sampleRate);
 
   let walk = 0;
 

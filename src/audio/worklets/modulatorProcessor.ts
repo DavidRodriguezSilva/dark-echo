@@ -19,12 +19,17 @@ class ModulatorProcessor extends AudioWorkletProcessor {
       minHz?: number;
       maxHz?: number;
       basePeriodSeconds?: number;
+      randomWalkWeight?: number;
+      randomWalkTimeConstantSeconds?: number;
     };
 
     this.modulator = createModulator(mulberry32(data.seed ?? 1), {
       min: data.minHz ?? 0,
       max: data.maxHz ?? 1,
       basePeriodSeconds: data.basePeriodSeconds ?? 10,
+      randomWalkWeight: data.randomWalkWeight,
+      randomWalkTimeConstantSeconds: data.randomWalkTimeConstantSeconds,
+      sampleRate,
     });
   }
 

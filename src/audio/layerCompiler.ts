@@ -79,6 +79,8 @@ function compileContinuousLayer(
         minHz: declaration.modulation.minHz,
         maxHz: declaration.modulation.maxHz,
         basePeriodSeconds: declaration.modulation.basePeriodSeconds,
+        randomWalkWeight: declaration.modulation.randomWalkWeight,
+        randomWalkTimeConstantSeconds: declaration.modulation.randomWalkTimeConstantSeconds,
       },
     });
     modulatorNode.connect(filter.frequency);

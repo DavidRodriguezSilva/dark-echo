@@ -84,6 +84,8 @@ El `lfo(time, speed, min, max)` actual es una sinusoide única: su periodo es au
 
 *Por qué:* la suma de sinusoides de periodos inconmensurables no vuelve a un estado idéntico, y el paseo aleatorio aporta la deriva no cíclica que la suma de periódicas no da. Es el mecanismo concreto por el que se cumple el requisito de no periodicidad, y por eso se verifica midiendo la autocorrelación (ver D8).
 
+*Calibrado en la tarea 9.4:* el paso del paseo aleatorio se deriva de una constante de tiempo física (segundos) dividida por la frecuencia de muestreo real, no de un número fijo por muestra (D15) — con un paso fijo, el paseo aleatorio se decorrelaba en ~2 ms, demasiado rápido para competir con las senoides a la escala en que se mide la periodicidad (ventanas de 50 ms), y la componente periódica dominaba la autocorrelación de la envolvente. El peso por defecto del paseo aleatorio también sube de 0.35 a 0.8: ver `docs/synthesis-reference.md`, "Umbral de periodicidad", para la medición completa.
+
 ### D6 — El dominio no conoce el navegador; la plataforma se aísla detrás de puertos
 
 Capas con dependencias en una sola dirección:

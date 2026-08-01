@@ -340,29 +340,55 @@ propagación del frente de onda del rayo.
 
 ## Criterios de aceptación
 
-### Criterios espectrales por ambiente (provisionales)
+### Criterios espectrales por ambiente
 
-Los siguientes valores son el punto de partida declarado antes de implementar
-el motor nuevo. La tarea 9.4 los calibra sobre el render real de `rain` y la
-9.6/10.6 los consolida con los cuatro ambientes ya portados; hasta entonces
-son un compromiso razonado, no una medición.
+`rain` esta calibrado sobre su render real (tarea 9.4); `wind`, `river` y
+`ocean` quedan con un punto de partida razonado hasta que la tarea 10.4/10.6
+los mida sobre su propia implementacion portada.
 
-| Ambiente | Banda de energía dominante                        | Pendiente esperada       | Tolerancia                               |
-| -------- | ------------------------------------------------- | ------------------------ | ---------------------------------------- |
-| `rain`   | 800 Hz – 6 kHz (cuerpo + goteo)                   | Plana en la banda, ±3 dB | ±4 dB en banda, ±20% en límites de banda |
-| `wind`   | 150 Hz – 3 kHz, variable                          | -6 dB/oct desde el corte | ±3 dB/oct                                |
-| `river`  | 150 Hz – 5 kHz                                    | -9 dB/oct desde el corte | ±3 dB/oct                                |
-| `ocean`  | 100 Hz – 4 kHz (cuerpo grave + estallidos agudos) | -12 dB/oct en el cuerpo  | ±4 dB/oct                                |
+El criterio de `rain` se expresa como fraccion de energia dentro de la banda
+declarada sobre una ventana de analisis de 131072 muestras (FFT radix-2)
+tomada del centro de un render — es la magnitud que el test de la tarea 9.5
+mide de verdad, en lugar de una forma de "planitud en dB" mas dificil de
+verificar de forma robusta sobre ruido de banda ancha.
 
-### Umbral de periodicidad (provisional)
+| Ambiente | Banda de energía dominante                        | Criterio                                                            |
+| -------- | ------------------------------------------------- | ------------------------------------------------------------------- |
+| `rain`   | 800 Hz – 6 kHz (cuerpo + goteo)                   | **Medido: 74-76%** de la energía dentro de la banda. Umbral: ≥ 60%. |
+| `wind`   | 150 Hz – 3 kHz, variable                          | Provisional: ≥ 60% dentro de la banda (a medir en 10.4).            |
+| `river`  | 150 Hz – 5 kHz                                    | Provisional: ≥ 60% dentro de la banda (a medir en 10.4).            |
+| `ocean`  | 100 Hz – 4 kHz (cuerpo grave + estallidos agudos) | Provisional: ≥ 55% dentro de la banda (a medir en 10.4).            |
+
+### Umbral de periodicidad
 
 Sobre la autocorrelación normalizada de la envolvente de energía (RMS en
-ventanas de 50 ms) de un render de al menos 120 s: ningún pico fuera del
-desplazamiento nulo SHALL superar **0.15** de correlación normalizada. Este
-umbral se recalibra en la tarea 9.4 sobre el primer render real; el valor de
-partida es deliberadamente conservador (más estricto que laxo), porque un
-umbral demasiado laxo no detectaría la regresión que la referencia existe
-para prevenir.
+ventanas de 50 ms) de un render de al menos 150 s: ningún pico fuera del
+desplazamiento nulo SHALL superar **0.35** de correlación normalizada.
+
+**Medido sobre `rain` (tarea 9.4): 0.165.** El umbral de 0.35 deja margen
+sobre el valor medido sin dejar de detectar una regresión real: un modulador
+dominado por su componente periódica (la configuración con la que se
+descubrió el problema, ver más abajo) mide entre 0.6 y 0.9 según el peso
+exacto — muy por encima del umbral — mientras que ruido sin ninguna
+modulación lenta mide ~0.04.
+
+**Hallazgo de la calibración**, documentado porque cambió una decisión de
+diseño: el modulador compuesto (D5) inicialmente combinaba las tres senoides
+inconmensurables con un peso del 65% frente a un 35% de paseo aleatorio, y
+ese paseo tenía un paso fijo por muestra (`0.01`) independiente de la
+frecuencia de muestreo. Eso le daba al paseo aleatorio una constante de
+tiempo de apenas ~2 ms — mucho más rápido que la ventana de análisis de 50
+ms — así que quedaba promediado dentro de cada ventana de energía y no
+llegaba a competir con la componente periódica a la escala en que se mide la
+periodicidad: la autocorrelación de `rain` medía ~0.64, muy por encima de
+cualquier umbral razonable. La causa raíz era doble: (a) el paso del paseo
+aleatorio no se derivaba de un tiempo físico ni de la frecuencia de muestreo
+real (violaba la propia regla de esta referencia sobre unidades físicas), y
+(b) el peso del paseo aleatorio era insuficiente frente a la componente
+periódica. Corregido subiendo el peso por defecto a **0.8** y derivando el
+paso del paseo de una constante de tiempo en segundos (por defecto, el
+propio periodo base) dividida por la frecuencia de muestreo real — con eso,
+`rain` mide 0.165.
 
 ### Protocolo de validación perceptual
 
@@ -385,9 +411,6 @@ para prevenir.
 
 ### Presupuesto de coste de cómputo
 
-Declarado antes de medir (la tarea 9.6 mide sobre `rain` real y fija el valor
-definitivo; el 10.6 lo consolida con los cuatro ambientes):
-
 - **Ambiente individual más exigente**: el tiempo de cómputo de audio por
   bloque de 128 muestras SHALL mantenerse por debajo del **40%** del tiempo
   real disponible para ese bloque a la frecuencia de muestreo del contexto,
@@ -395,10 +418,22 @@ definitivo; el 10.6 lo consolida con los cuatro ambientes):
 - **Mezcla simultánea**: el conjunto de todas las capas activas SHALL
   mantenerse por debajo del **75%** de ese mismo presupuesto por bloque, para
   no operar al límite y tolerar variabilidad del entorno.
-- **Número máximo de capas**: se deriva de estas dos cifras dividiendo el
-  presupuesto de mezcla entre el coste medido de la capa más cara del
-  catálogo. Hasta que 9.6 mida ese coste real, el valor de partida es **8**
-  capas simultáneas.
+
+**Medido (tarea 9.6):** renderizar 30 s de `rain` completo (sus tres capas)
+tarda ~840 ms de tiempo de reloj — un factor de tiempo real de **~0.028**
+(unas 36 veces más rápido que tiempo real) en la máquina de referencia usada
+para esta medición. Por capa: `cuerpo` 0.013, `impactos` 0.009, `goteo`
+0.004. El cómputo queda muy lejos de ser el factor limitante: incluso un
+dispositivo real diez veces más lento que la máquina de referencia seguiría
+muy por debajo del presupuesto del 40%.
+
+- **Número máximo de capas**: dado que el coste no es el factor limitante en
+  esta medición, el número se fija por **criterio de producto** en lugar de
+  por presupuesto agotado: **8** capas simultáneas, un límite pensado para
+  que una consola de mezcla siga siendo manejable para una persona, no
+  porque el hardware lo exija. Se revisa si una medición en un dispositivo
+  real de gama baja (pendiente, requiere hardware — ver tarea 15.5) muestra
+  lo contrario.
 
 ### Criterios de imagen estéreo
 

@@ -8,6 +8,7 @@ describe("createModulator", () => {
       min: 0.25,
       max: 0.55,
       basePeriodSeconds: 3,
+      sampleRate: 44100,
     });
 
     for (let step = 0; step < 5000; step++) {
@@ -19,8 +20,9 @@ describe("createModulator", () => {
   });
 
   it("es determinista bajo semilla", () => {
-    const a = createModulator(mulberry32(77), { min: 0, max: 1, basePeriodSeconds: 5 });
-    const b = createModulator(mulberry32(77), { min: 0, max: 1, basePeriodSeconds: 5 });
+    const options = { min: 0, max: 1, basePeriodSeconds: 5, sampleRate: 44100 };
+    const a = createModulator(mulberry32(77), options);
+    const b = createModulator(mulberry32(77), options);
 
     const seqA = Array.from({ length: 200 }, (_, i) => a(i * 0.02));
     const seqB = Array.from({ length: 200 }, (_, i) => b(i * 0.02));
@@ -34,6 +36,7 @@ describe("createModulator", () => {
       max: 1,
       basePeriodSeconds: 2,
       randomWalkWeight: 0,
+      sampleRate: 44100,
     });
 
     // Un LFO de un solo seno con este periodo repetiria exactamente en t=2s.
@@ -48,5 +51,25 @@ describe("createModulator", () => {
     }
 
     expect(early).not.toEqual(later);
+  });
+
+  it("con un paso derivado de una constante de tiempo corta, el paseo aleatorio domina la variacion a escala de envolvente", () => {
+    // Constante de tiempo mucho mas corta que el periodo base: el paseo
+    // aleatorio debe decorrelar sensiblemente mas rapido que la sinusoide.
+    const modulator = createModulator(mulberry32(6), {
+      min: 0,
+      max: 1,
+      basePeriodSeconds: 20,
+      randomWalkWeight: 1,
+      randomWalkTimeConstantSeconds: 0.5,
+      sampleRate: 1000,
+    });
+
+    const samples = Array.from({ length: 2000 }, (_, i) => modulator(i / 1000));
+    const unique = new Set(samples.map((v) => v.toFixed(6)));
+
+    // Con peso 1 el resultado es puro paseo aleatorio: no puede degenerar en
+    // un puñado de valores repetidos.
+    expect(unique.size).toBeGreaterThan(1000);
   });
 });

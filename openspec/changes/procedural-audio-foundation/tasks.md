@@ -75,13 +75,13 @@
 
 ## 9. Verificación de señal y calibración
 
-- [ ] 9.1 Configurar Vitest en modo navegador sobre Chromium y el arnés de render con `OfflineAudioContext`, separado de la suite rápida
-- [ ] 9.2 Implementar las utilidades de análisis: FFT radix-2 y autocorrelación normalizada sobre la envolvente de energía en ventanas cortas
-- [ ] 9.3 Implementar la comprobación de compatibilidad mono: sumar los canales y verificar que ninguna capa se cancela
-- [ ] 9.4 Calibrar los umbrales espectrales y de periodicidad sobre el render real de `rain` y actualizar la referencia de síntesis con los valores definitivos y su tolerancia
-- [ ] 9.5 Añadir el test de perfil espectral de `rain`, el de ausencia de periodicidad y el de equivalencia entre 44,1 y 48 kHz, e integrarlos en CI
-- [ ] 9.6 Medir el coste de cómputo de `rain` en reproducción sostenida, registrarlo contra el presupuesto declarado y fijar con ese dato el número máximo de capas
-- [ ] 9.7 Verificar que el audio se mantiene sin cortes mientras se interactúa intensamente con la consola, y en una sesión de reproducción prolongada
+- [x] 9.1 Configurar Vitest en modo navegador sobre Chromium y el arnés de render con `OfflineAudioContext`, separado de la suite rápida
+- [x] 9.2 Implementar las utilidades de análisis: FFT radix-2 y autocorrelación normalizada sobre la envolvente de energía en ventanas cortas
+- [x] 9.3 Implementar la comprobación de compatibilidad mono: sumar los canales y verificar que ninguna capa se cancela
+- [x] 9.4 Calibrar los umbrales espectrales y de periodicidad sobre el render real de `rain` y actualizar la referencia de síntesis con los valores definitivos y su tolerancia
+- [x] 9.5 Añadir el test de perfil espectral de `rain`, el de ausencia de periodicidad y el de equivalencia entre 44,1 y 48 kHz, e integrarlos en CI
+- [x] 9.6 Medir el coste de cómputo de `rain` en reproducción sostenida, registrarlo contra el presupuesto declarado y fijar con ese dato el número máximo de capas
+- [ ] 9.7 Verificar que el audio se mantiene sin cortes mientras se interactúa intensamente con la consola, y en una sesión de reproducción prolongada (**pendiente**: el motor nuevo aún no está conectado a ninguna consola — se retoma cuando la tarea 12.x lo conecte; la comprobación perceptual de "sin cortes" además requiere hardware de audio real, no disponible en este entorno)
 
 ## 10. Portado de los ambientes restantes
 

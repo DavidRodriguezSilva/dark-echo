@@ -23,7 +23,16 @@ export const rain: AmbientDeclaration = {
       filter: { type: "lowpass", frequencyHz: 2000 },
       // Banda dentro de la declarada en el criterio espectral de rain
       // (800 Hz - 6 kHz); el periodo largo son los "frentes de intensidad".
-      modulation: { minHz: 800, maxHz: 3000, basePeriodSeconds: 17 },
+      // Peso del paseo aleatorio alto (tarea 9.4, calibrado sobre el render
+      // real): con el peso por defecto la componente periodica dominaba la
+      // autocorrelacion de la envolvente incluso en renders largos.
+      modulation: {
+        minHz: 800,
+        maxHz: 3000,
+        basePeriodSeconds: 17,
+        randomWalkWeight: 0.8,
+        randomWalkTimeConstantSeconds: 17,
+      },
       gain: 0.5,
       stereo: { pan: 0, width: 0.6 },
     },

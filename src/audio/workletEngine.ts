@@ -10,8 +10,9 @@ import { rampToValue } from "./transitions";
  * 10.7): en ese momento este motor sustituye al antiguo.
  */
 
-// synthesis-reference, "Presupuesto de coste de computo": valor de partida
-// antes de medir; la tarea 9.6 lo fija con el coste real de `rain`.
+// synthesis-reference, "Presupuesto de coste de computo" (tarea 9.6): el
+// computo mide muy por debajo del presupuesto, asi que el limite es un
+// criterio de producto (una consola manejable), no una cota de hardware.
 export const MAX_SIMULTANEOUS_LAYERS = 8;
 
 const DEFAULT_FADE_SECONDS = 1.5;
