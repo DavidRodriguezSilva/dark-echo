@@ -8,6 +8,10 @@ import { MAX_SIMULTANEOUS_LAYERS, WorkletEngine } from "./workletEngine";
  * operaciones sobre `WorkletEngine`, que solo conoce capas individuales, no
  * ambientes. Cada capa se direcciona como `"<ambiente>.<capa>"` para que dos
  * ambientes con una capa del mismo nombre (p. ej. "cuerpo") no colisionen.
+ *
+ * Es tambien la fuente de verdad observable del estado de reproduccion
+ * (design.md D7): expone `subscribe`/`getSnapshot` para `useSyncExternalStore`,
+ * de modo que el panel de estado nunca pueda desincronizarse del audio real.
  */
 
 export interface MixerResult {
@@ -15,12 +19,40 @@ export interface MixerResult {
   message: string;
 }
 
+export interface LayerSnapshot {
+  id: string;
+  volume: number;
+}
+
+/**
+ * Estado de reposo explicito (command-console, "Panel de estado del
+ * sistema"): distingue "nunca hubo nada" de "detenido, listo para reanudar"
+ * de "sonando".
+ */
+export type MixSnapshot =
+  | { kind: "empty" }
+  | { kind: "stopped"; layers: LayerSnapshot[] }
+  | { kind: "playing"; layers: LayerSnapshot[] };
+
+export interface PlaybackSnapshot {
+  mix: MixSnapshot;
+  masterVolume: number;
+}
+
+type Listener = () => void;
+
 export class AmbientMixer {
   private readonly engine = new WorkletEngine();
   // Snapshot tomado en `stop()`: id de capa -> volumen, para que `play` sin
   // argumento reanude exactamente la misma composicion (command-console,
   // "stop conserva la composicion").
   private conservedComposition: Map<string, number> | null = null;
+  private readonly listeners = new Set<Listener>();
+  private snapshot: PlaybackSnapshot = { mix: { kind: "empty" }, masterVolume: 0.5 };
+
+  constructor() {
+    this.publish();
+  }
 
   private layerId(ambientId: string, layerKey: string): string {
     return `${ambientId}.${layerKey}`;
@@ -38,6 +70,38 @@ export class AmbientMixer {
       .join(", ");
     return `"${ambientId}" no existe. Disponibles: ${ids}.`;
   }
+
+  private currentLayers(): LayerSnapshot[] {
+    return this.engine.activeLayerIds.map((id) => ({
+      id,
+      volume: this.engine.getLayerVolume(id) ?? 0,
+    }));
+  }
+
+  private publish(): void {
+    const layers = this.currentLayers();
+    const mix: MixSnapshot =
+      layers.length > 0
+        ? { kind: "playing", layers }
+        : this.conservedComposition
+          ? {
+              kind: "stopped",
+              layers: [...this.conservedComposition].map(([id, volume]) => ({ id, volume })),
+            }
+          : { kind: "empty" };
+
+    this.snapshot = { mix, masterVolume: this.engine.getMasterVolume() };
+    for (const listener of this.listeners) listener();
+  }
+
+  /** Para `useSyncExternalStore`: se suscribe a cada cambio de estado. */
+  subscribe = (listener: Listener): (() => void) => {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  };
+
+  /** Para `useSyncExternalStore`: la referencia solo cambia cuando el estado cambia. */
+  getSnapshot = (): PlaybackSnapshot => this.snapshot;
 
   private async addAmbientLayers(
     ambient: AmbientDeclaration,
@@ -58,10 +122,12 @@ export class AmbientMixer {
       const id = this.layerId(ambientId, key);
       const result = await this.engine.addLayer(id, ambient.layers[key], this.seedFor(id));
       if (!result.ok) {
+        this.publish();
         return { ok: false, message: result.reason };
       }
     }
 
+    this.publish();
     return { ok: true, message: `${ambientId} sonando.` };
   }
 
@@ -103,6 +169,7 @@ export class AmbientMixer {
         return { ok: false, message: `"${target}" no está sonando.` };
       }
       for (const id of activeIds) this.engine.removeLayer(id);
+      this.publish();
       return { ok: true, message: `${target} retirado.` };
     }
 
@@ -110,6 +177,7 @@ export class AmbientMixer {
       return { ok: false, message: `La capa "${target}" no está activa.` };
     }
     this.engine.removeLayer(target);
+    this.publish();
     return { ok: true, message: `${target} retirado.` };
   }
 
@@ -123,6 +191,7 @@ export class AmbientMixer {
       active.map((id) => [id, this.engine.getLayerVolume(id) ?? 1])
     );
     this.engine.stopAll();
+    this.publish();
 
     return {
       ok: true,
@@ -150,20 +219,22 @@ export class AmbientMixer {
     }
 
     this.conservedComposition = null;
+    this.publish();
     return { ok: true, message: "Reproducción reanudada." };
   }
 
   reset(): MixerResult {
     for (const id of this.engine.activeLayerIds) this.engine.removeLayer(id);
     this.conservedComposition = null;
+    this.publish();
     return { ok: true, message: "Mezcla vaciada." };
   }
 
   setMasterVolume(value: number): MixerResult {
     const result = this.engine.setMasterVolume(value);
-    return result.ok
-      ? { ok: true, message: `Volumen maestro: ${value}` }
-      : { ok: false, message: result.reason };
+    if (!result.ok) return { ok: false, message: result.reason };
+    this.publish();
+    return { ok: true, message: `Volumen maestro: ${value}` };
   }
 
   setLayerVolume(target: string, value: number): MixerResult {
@@ -180,6 +251,7 @@ export class AmbientMixer {
         return { ok: false, message: `"${target}" no está sonando.` };
       }
       for (const id of ids) this.engine.setLayerVolume(id, value);
+      this.publish();
       return { ok: true, message: `Volumen de ${target}: ${value}` };
     }
 
@@ -187,16 +259,17 @@ export class AmbientMixer {
       return { ok: false, message: `La capa "${target}" no está activa.` };
     }
     this.engine.setLayerVolume(target, value);
+    this.publish();
     return { ok: true, message: `Volumen de ${target}: ${value}` };
   }
 
   status(): string {
-    const active = this.engine.activeLayerIds;
-    if (active.length > 0) {
-      return `Sonando: ${active.join(", ")}`;
+    const { mix } = this.snapshot;
+    if (mix.kind === "playing") {
+      return `Sonando: ${mix.layers.map((l) => l.id).join(", ")}`;
     }
-    if (this.conservedComposition) {
-      return `Detenido. Mezcla conservada: ${[...this.conservedComposition.keys()].join(", ")}`;
+    if (mix.kind === "stopped") {
+      return `Detenido. Mezcla conservada: ${mix.layers.map((l) => l.id).join(", ")}`;
     }
     return "No hay reproducción en curso.";
   }

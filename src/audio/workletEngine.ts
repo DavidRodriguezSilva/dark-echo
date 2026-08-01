@@ -150,4 +150,8 @@ export class WorkletEngine {
   getLayerVolume(id: string): number | undefined {
     return this.layers.get(id)?.volume;
   }
+
+  getMasterVolume(): number {
+    return this.masterVolume;
+  }
 }

@@ -110,16 +110,16 @@
 
 ## 12. Consola y panel de estado
 
-- [ ] 12.1 Implementar el store observable del estado de reproducción y su consumo desde React con `useSyncExternalStore`
-- [ ] 12.2 Implementar el historial navegable hacia atrás y hacia adelante, con retorno al contenido en edición, deduplicación de entradas consecutivas iguales y límite máximo de entradas
-- [ ] 12.3 Persistir el historial entre sesiones y verificar que se recupera al reabrir la aplicación
-- [ ] 12.4 Implementar el autocompletado bajo demanda: coincidencia única, coincidencias múltiples con prefijo común, y valores de argumento
-- [ ] 12.5 Implementar las sugerencias en vivo sin alterar lo escrito hasta que el usuario acepte una
-- [ ] 12.6 Implementar la salida como registro al que solo se añade, distinguiendo eco, respuesta y error, con límite de líneas retenidas
-- [ ] 12.7 Implementar el seguimiento automático de la última línea y su suspensión cuando el usuario ha desplazado la salida hacia atrás
-- [ ] 12.8 Implementar el panel de estado con capas activas, volumen por capa, volumen maestro y estado de reposo explícito
-- [ ] 12.9 Implementar los controles táctiles de iniciar, detener y ajustar volumen maestro sobre las primitivas de shadcn, verificando que producen el mismo efecto que sus comandos y actualizan el panel
-- [ ] 12.10 Implementar la identidad de terminal: tipografía monoespaciada, línea de entrada enfocada al abrir y cursor que respeta la preferencia por movimiento reducido
+- [x] 12.1 Implementar el store observable del estado de reproducción y su consumo desde React con `useSyncExternalStore`
+- [x] 12.2 Implementar el historial navegable hacia atrás y hacia adelante, con retorno al contenido en edición, deduplicación de entradas consecutivas iguales y límite máximo de entradas
+- [x] 12.3 Persistir el historial entre sesiones y verificar que se recupera al reabrir la aplicación (adelanta un `platform/storage.ts` mínimo, ver nota en la tarea 14.1)
+- [x] 12.4 Implementar el autocompletado bajo demanda: coincidencia única, coincidencias múltiples con prefijo común, y valores de argumento
+- [x] 12.5 Implementar las sugerencias en vivo sin alterar lo escrito hasta que el usuario acepte una
+- [x] 12.6 Implementar la salida como registro al que solo se añade, distinguiendo eco, respuesta y error, con límite de líneas retenidas
+- [x] 12.7 Implementar el seguimiento automático de la última línea y su suspensión cuando el usuario ha desplazado la salida hacia atrás
+- [x] 12.8 Implementar el panel de estado con capas activas, volumen por capa, volumen maestro y estado de reposo explícito
+- [x] 12.9 Implementar los controles táctiles de iniciar, detener y ajustar volumen maestro sobre las primitivas de shadcn, verificando que producen el mismo efecto que sus comandos y actualizan el panel
+- [x] 12.10 Implementar la identidad de terminal: tipografía monoespaciada, línea de entrada enfocada al abrir y cursor que respeta la preferencia por movimiento reducido
 
 ## 13. Apariencia y temas
 

@@ -130,3 +130,57 @@ describe("AmbientMixer — volumen maestro y por capa", () => {
     expect(result.ok).toBe(true);
   });
 });
+
+describe("AmbientMixer — estado observable (design.md D7)", () => {
+  it("getSnapshot empieza en estado vacío explícito", () => {
+    const mixer = new AmbientMixer();
+    expect(mixer.getSnapshot().mix).toEqual({ kind: "empty" });
+  });
+
+  it("notifica a los suscriptores tras cada operación que cambia la mezcla", async () => {
+    const mixer = new AmbientMixer();
+    let notifications = 0;
+    const unsubscribe = mixer.subscribe(() => notifications++);
+
+    await mixer.play("rain");
+    expect(notifications).toBeGreaterThan(0);
+
+    unsubscribe();
+  });
+
+  it("distingue sonando / detenido con mezcla conservada / vacío", async () => {
+    const mixer = new AmbientMixer();
+
+    await mixer.play("rain");
+    expect(mixer.getSnapshot().mix.kind).toBe("playing");
+
+    mixer.stop();
+    expect(mixer.getSnapshot().mix.kind).toBe("stopped");
+
+    mixer.reset();
+    expect(mixer.getSnapshot().mix.kind).toBe("empty");
+  });
+
+  it("el snapshot refleja el volumen maestro y por capa vigentes", async () => {
+    const mixer = new AmbientMixer();
+    await mixer.play("rain");
+    mixer.setMasterVolume(0.4);
+    mixer.setLayerVolume("rain", 0.25);
+
+    const snapshot = mixer.getSnapshot();
+    expect(snapshot.masterVolume).toBe(0.4);
+    expect(
+      snapshot.mix.kind === "playing" && snapshot.mix.layers.every((layer) => layer.volume === 0.25)
+    ).toBe(true);
+  });
+
+  it("dejar de suscribirse detiene las notificaciones", async () => {
+    const mixer = new AmbientMixer();
+    let notifications = 0;
+    const unsubscribe = mixer.subscribe(() => notifications++);
+    unsubscribe();
+
+    await mixer.play("rain");
+    expect(notifications).toBe(0);
+  });
+});
