@@ -26,9 +26,9 @@
 
 ## 4. Estructura en capas
 
-- [ ] 4.1 Crear las carpetas `domain/`, `dsp/`, `audio/`, `commands/`, `platform/`, `styles/` y `ui/` con la responsabilidad de cada una documentada
-- [ ] 4.2 Reubicar el código existente en las capas que le corresponden, sin cambiar comportamiento
-- [ ] 4.3 Añadir la regla de lint que impide dependencias en dirección contraria a la declarada en `design.md` (D6), verificando en particular que `dsp/`, `domain/` y `audio/` no importan nada de `ui/`
+- [x] 4.1 Crear las carpetas `domain/`, `dsp/`, `audio/`, `commands/`, `platform/`, `styles/` y `ui/` con la responsabilidad de cada una documentada
+- [x] 4.2 Reubicar el código existente en las capas que le corresponden, sin cambiar comportamiento
+- [x] 4.3 Añadir la regla de lint que impide dependencias en dirección contraria a la declarada en `design.md` (D6), verificando en particular que `dsp/`, `domain/` y `audio/` no importan nada de `ui/`
 
 ## 5. Investigación y referencia de síntesis
 

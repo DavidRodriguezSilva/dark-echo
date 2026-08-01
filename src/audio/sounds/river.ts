@@ -1,6 +1,6 @@
-import { BrownNoise, whiteNoise } from "../noise";
-import { type SoundGenerator } from "../types";
-import { clamp, lfo } from "../utils";
+import { BrownNoise, whiteNoise } from "../../dsp/noise";
+import { type SoundGenerator } from "../../domain/types";
+import { clamp, lfo } from "../../dsp/utils";
 
 export class RiverSound implements SoundGenerator {
   private low = new BrownNoise();

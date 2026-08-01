@@ -1,6 +1,6 @@
-import { BrownNoise } from "../noise";
-import { type SoundGenerator } from "../types";
-import { clamp, lfo, smoothRandom } from "../utils";
+import { BrownNoise } from "../../dsp/noise";
+import { type SoundGenerator } from "../../domain/types";
+import { clamp, lfo, smoothRandom } from "../../dsp/utils";
 
 export class WindSound implements SoundGenerator {
   private brown = new BrownNoise();

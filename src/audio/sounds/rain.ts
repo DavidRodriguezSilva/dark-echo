@@ -1,6 +1,6 @@
-import { whiteNoise } from "../noise";
-import { type SoundGenerator } from "../types";
-import { clamp, lfo } from "../utils";
+import { whiteNoise } from "../../dsp/noise";
+import { type SoundGenerator } from "../../domain/types";
+import { clamp, lfo } from "../../dsp/utils";
 
 export class RainSound implements SoundGenerator {
   private last = 0;

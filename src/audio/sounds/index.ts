@@ -1,4 +1,4 @@
-import { type SoundGenerator, type SoundsType } from "../types";
+import { type SoundGenerator, type SoundsType } from "../../domain/types";
 import { RainSound } from "./rain";
 import { WindSound } from "./wind";
 import { RiverSound } from "./river";
@@ -17,4 +17,4 @@ export function createSound(type: SoundsType): SoundGenerator {
   }
 }
 
-export { type SoundGenerator, type SoundsType } from "../types";
+export { type SoundGenerator, type SoundsType } from "../../domain/types";

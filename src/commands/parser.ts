@@ -1,5 +1,5 @@
 import { AudioEngine } from "../audio/engine";
-import { type SoundsType } from "../audio/sounds";
+import { type SoundsType } from "../domain/types";
 
 const validSounds: SoundsType[] = ["rain", "wind", "river", "ocean"];
 

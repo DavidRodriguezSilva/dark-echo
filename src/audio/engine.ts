@@ -1,4 +1,4 @@
-import type { SoundGenerator, SoundsType } from "./types";
+import type { SoundGenerator, SoundsType } from "../domain/types";
 import { createSound } from "./sounds";
 
 export class AudioEngine {
