@@ -8,6 +8,13 @@ El objetivo es generar sonidos continuos y relajantes mediante algoritmos matem�
 
 El proyecto está pensado como un **MVP** simple, portable y fácilmente extensible.
 
+> Este documento describe la visión original del proyecto y se está
+> reescribiendo como parte del change `procedural-audio-foundation` (ver
+> `openspec/changes/procedural-audio-foundation/`). El modelo de síntesis de
+> cada fenómeno sonoro —con sus parámetros, unidades, fuentes y criterios de
+> aceptación— vive en [`docs/synthesis-reference.md`](docs/synthesis-reference.md)
+> y no se duplica aquí.
+
 ---
 
 # Objetivos

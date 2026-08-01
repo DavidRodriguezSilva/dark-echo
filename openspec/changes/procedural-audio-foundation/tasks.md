@@ -32,15 +32,15 @@
 
 ## 5. Investigación y referencia de síntesis
 
-- [ ] 5.1 Investigar y documentar el modelo de **impactos y gotas**: mecanismo de impacto y de burbuja arrastrada, resonancia de Minnaert, distribución de radios, parámetros con rangos, unidades y fuentes
-- [ ] 5.2 Investigar y documentar los modelos de **flujo turbulento**, **ráfagas de aire**, **oleaje**, **combustión** y **descargas eléctricas** con el mismo nivel de detalle
-- [ ] 5.3 Establecer la regla de que todo parámetro se declara en unidad física con rango y justificación, y que los coeficientes se derivan en tiempo de ejecución
-- [ ] 5.4 Registrar para cada modelo las alternativas consideradas y el motivo de la elección
-- [ ] 5.5 Definir el **protocolo de validación perceptual**: duración mínima de escucha, condiciones de reproducción y rasgos a evaluar
-- [ ] 5.6 Declarar los **criterios espectrales** por ambiente (banda de energía, pendiente, tolerancia) y el **umbral de periodicidad**, con valores provisionales a calibrar en la tarea 9.4
-- [ ] 5.7 Declarar el **presupuesto de coste de cómputo** para el ambiente más exigente y para la mezcla simultánea, y el número máximo de capas que se deriva de él
-- [ ] 5.8 Documentar los criterios de **imagen estéreo**: colocación y anchura por capa, decorrelación y compatibilidad mono
-- [ ] 5.9 Publicar el documento de referencia en el repositorio con sus fuentes citadas y enlazarlo desde `readme.md`
+- [x] 5.1 Investigar y documentar el modelo de **impactos y gotas**: mecanismo de impacto y de burbuja arrastrada, resonancia de Minnaert, distribución de radios, parámetros con rangos, unidades y fuentes
+- [x] 5.2 Investigar y documentar los modelos de **flujo turbulento**, **ráfagas de aire**, **oleaje**, **combustión** y **descargas eléctricas** con el mismo nivel de detalle
+- [x] 5.3 Establecer la regla de que todo parámetro se declara en unidad física con rango y justificación, y que los coeficientes se derivan en tiempo de ejecución
+- [x] 5.4 Registrar para cada modelo las alternativas consideradas y el motivo de la elección
+- [x] 5.5 Definir el **protocolo de validación perceptual**: duración mínima de escucha, condiciones de reproducción y rasgos a evaluar
+- [x] 5.6 Declarar los **criterios espectrales** por ambiente (banda de energía, pendiente, tolerancia) y el **umbral de periodicidad**, con valores provisionales a calibrar en la tarea 9.4
+- [x] 5.7 Declarar el **presupuesto de coste de cómputo** para el ambiente más exigente y para la mezcla simultánea, y el número máximo de capas que se deriva de él
+- [x] 5.8 Documentar los criterios de **imagen estéreo**: colocación y anchura por capa, decorrelación y compatibilidad mono
+- [x] 5.9 Publicar el documento de referencia en el repositorio con sus fuentes citadas y enlazarlo desde `readme.md`
 
 ## 6. Núcleo de DSP puro y determinista
 
