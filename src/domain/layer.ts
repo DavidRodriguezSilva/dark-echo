@@ -1,8 +1,8 @@
 /**
  * Declaracion de una capa de ambiente: datos, no codigo (procedural-ambiences,
  * "El ambiente es una composicion declarativa de capas"). El tipo de
- * ambiente completo y el catalogo se definen en la tarea 8.1; este archivo
- * cubre lo que necesita el compilador de capas de `audio/` (tarea 7.5).
+ * ambiente completo y el catalogo se definen en domain/ambient.ts y
+ * domain/catalog.ts (tarea 8.1/8.2).
  */
 
 export type NoiseColor = "white" | "brown";
@@ -20,6 +20,19 @@ export interface ContinuousModulation {
   minHz: number;
   maxHz: number;
   basePeriodSeconds: number;
+}
+
+/**
+ * Rango de parametros de una voz de gota (synthesis-reference, modelo
+ * `impacto-gota`), compartido por las capas de granulacion densa y de
+ * eventos esporadicos.
+ */
+export interface DropVoiceRange {
+  radiusRange: [number, number];
+  bubbleDecayRange: [number, number];
+  pitchDrift: number;
+  impactDurationRange: [number, number];
+  bubbleProbability?: number;
 }
 
 /**
@@ -41,4 +54,32 @@ export interface ContinuousLayerDeclaration {
   stereo: StereoImage;
 }
 
-export type LayerDeclaration = ContinuousLayerDeclaration;
+/**
+ * Granulacion densa de eventos discretos (design.md D2): decenas o cientos
+ * de voces por segundo, generadas dentro del worklet con su propio reloj de
+ * muestras y su propio banco de voces.
+ */
+export interface GranularLayerDeclaration extends DropVoiceRange {
+  kind: "granular";
+  model: string;
+  /** Densidad media de disparos, en eventos por segundo. */
+  rateHz: number;
+  gain: number;
+}
+
+/**
+ * Eventos esporadicos (design.md D2): planificados con anticipacion desde
+ * el hilo principal, cada uno renderizado como una voz de un solo uso.
+ */
+export interface SparseLayerDeclaration extends DropVoiceRange {
+  kind: "sparse";
+  model: string;
+  /** Densidad media de disparos, en eventos por segundo (baja: eventos discernibles). */
+  rateHz: number;
+  /** Duracion a renderizar por voz, en segundos. */
+  renderDurationSeconds: number;
+  gain: number;
+}
+
+export type LayerDeclaration =
+  ContinuousLayerDeclaration | GranularLayerDeclaration | SparseLayerDeclaration;

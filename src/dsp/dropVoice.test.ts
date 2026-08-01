@@ -81,4 +81,19 @@ describe("createDropVoice", () => {
 
     expect(seqA).toEqual(seqB);
   });
+
+  it("con probabilidad de burbuja 0, la voz es puro impacto sin componente tonal", () => {
+    const voice = createDropVoice(mulberry32(9), {
+      radiusMeters: 0.001,
+      bubbleDecaySeconds: 0.02,
+      pitchDrift: 0.05,
+      impactDurationSeconds: 0.002,
+      bubbleProbability: 0,
+      sampleRate: 44100,
+    });
+
+    // Pasado el transitorio de impacto, sin burbuja la voz debe quedar en silencio.
+    for (let i = 0; i < 4410; i++) voice();
+    expect(voice()).toBe(0);
+  });
 });

@@ -17,6 +17,8 @@ interface DenseGranularOptions {
   bubbleDecayRange?: [number, number];
   pitchDrift?: number;
   impactDurationRange?: [number, number];
+  /** Probabilidad de que el impacto arrastre burbuja. Rango declarado: 0.5 - 0.85. */
+  bubbleProbability?: number;
   /** Cuanto se mantiene una voz activa como maximo, en segundos. */
   voiceLifetimeSeconds?: number;
   maxVoices?: number;
@@ -43,6 +45,7 @@ class DenseGranularProcessor extends AudioWorkletProcessor {
   private readonly bubbleDecayRange: [number, number];
   private readonly pitchDrift: number;
   private readonly impactDurationRange: [number, number];
+  private readonly bubbleProbability: number;
   private readonly voiceLifetimeFrames: number;
   private readonly maxVoices: number;
 
@@ -58,6 +61,7 @@ class DenseGranularProcessor extends AudioWorkletProcessor {
     this.bubbleDecayRange = data.bubbleDecayRange ?? [0.004, 0.02];
     this.pitchDrift = data.pitchDrift ?? 0.05;
     this.impactDurationRange = data.impactDurationRange ?? [0.001, 0.004];
+    this.bubbleProbability = data.bubbleProbability ?? 0.7;
     this.voiceLifetimeFrames = Math.round((data.voiceLifetimeSeconds ?? 0.05) * sampleRate);
     this.maxVoices = data.maxVoices ?? 24;
 
@@ -71,6 +75,7 @@ class DenseGranularProcessor extends AudioWorkletProcessor {
       bubbleDecaySeconds: sampleRange(this.rng, this.bubbleDecayRange),
       pitchDrift: this.pitchDrift,
       impactDurationSeconds: sampleRange(this.rng, this.impactDurationRange),
+      bubbleProbability: this.bubbleProbability,
       sampleRate,
     });
     const pan = this.rng() * 2 - 1;

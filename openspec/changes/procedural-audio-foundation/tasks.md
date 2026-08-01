@@ -68,10 +68,10 @@
 
 ## 8. Modelo declarativo de ambientes y `rain`
 
-- [ ] 8.1 Definir en `domain/` el tipo de declaración de ambiente y de capa, incluyendo la referencia al modelo de síntesis que aplica cada capa y su colocación estéreo
-- [ ] 8.2 Implementar el catálogo y derivar de él el listado de ambientes, eliminando la lista de nombres duplicada en el parser
-- [ ] 8.3 Declarar `rain` con sus tres capas —cuerpo continuo, granulación de impactos y goteo esporádico— y verificar que cada capa es direccionable de forma individual
-- [ ] 8.4 Verificar por escucha prolongada que `rain` evoluciona de forma audible y no revela un patrón repetido
+- [x] 8.1 Definir en `domain/` el tipo de declaración de ambiente y de capa, incluyendo la referencia al modelo de síntesis que aplica cada capa y su colocación estéreo
+- [ ] 8.2 Implementar el catálogo y derivar de él el listado de ambientes (**hecho**: `domain/catalog.ts`); eliminando la lista de nombres duplicada en el parser (**pendiente**: se difiere a la tarea 11.11 para no romper `wind`/`river`/`ocean` en el motor antiguo, todavía activo, antes de que la 10.x los porte)
+- [x] 8.3 Declarar `rain` con sus tres capas —cuerpo continuo, granulación de impactos y goteo esporádico— y verificar que cada capa es direccionable de forma individual
+- [x] 8.4 Verificar por escucha prolongada que `rain` evoluciona de forma audible y no revela un patrón repetido
 
 ## 9. Verificación de señal y calibración
 

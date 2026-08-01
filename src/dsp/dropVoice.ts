@@ -39,6 +39,8 @@ export interface DropVoiceOptions {
   pitchDrift: number;
   /** Duracion del transitorio de impacto, en segundos. */
   impactDurationSeconds: number;
+  /** Probabilidad de que el impacto arrastre burbuja, en [0, 1]. Rango declarado: 0.5 - 0.85. */
+  bubbleProbability?: number;
   sampleRate: number;
 }
 
@@ -50,8 +52,17 @@ export type DropVoice = () => number;
  * impactos).
  */
 export function createDropVoice(rng: Rng, options: DropVoiceOptions): DropVoice {
-  const { radiusMeters, bubbleDecaySeconds, pitchDrift, impactDurationSeconds, sampleRate } =
-    options;
+  const {
+    radiusMeters,
+    bubbleDecaySeconds,
+    pitchDrift,
+    impactDurationSeconds,
+    bubbleProbability = 1,
+    sampleRate,
+  } = options;
+
+  // Se decide una sola vez, al crear la voz: no toda gota arrastra burbuja.
+  const hasBubble = rng() < bubbleProbability;
 
   let elapsed = 0;
   let bubblePhase = 0;
@@ -64,15 +75,18 @@ export function createDropVoice(rng: Rng, options: DropVoiceOptions): DropVoice 
       t < impactDurationSeconds ? Math.exp(-t / (impactDurationSeconds / 3)) : 0;
     const impact = whiteNoise(rng) * impactEnvelope;
 
-    const bubbleEnvelope = Math.exp(-t / (bubbleDecaySeconds / 3));
-    const instantFrequency = bubbleInstantFrequency(
-      radiusMeters,
-      pitchDrift,
-      bubbleDecaySeconds,
-      t
-    );
-    bubblePhase += (2 * Math.PI * instantFrequency) / sampleRate;
-    const bubble = Math.sin(bubblePhase) * bubbleEnvelope;
+    let bubble = 0;
+    if (hasBubble) {
+      const bubbleEnvelope = Math.exp(-t / (bubbleDecaySeconds / 3));
+      const instantFrequency = bubbleInstantFrequency(
+        radiusMeters,
+        pitchDrift,
+        bubbleDecaySeconds,
+        t
+      );
+      bubblePhase += (2 * Math.PI * instantFrequency) / sampleRate;
+      bubble = Math.sin(bubblePhase) * bubbleEnvelope;
+    }
 
     return impact * 0.5 + bubble * 0.5;
   };
