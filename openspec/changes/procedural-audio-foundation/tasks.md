@@ -81,7 +81,7 @@
 - [x] 9.4 Calibrar los umbrales espectrales y de periodicidad sobre el render real de `rain` y actualizar la referencia de síntesis con los valores definitivos y su tolerancia
 - [x] 9.5 Añadir el test de perfil espectral de `rain`, el de ausencia de periodicidad y el de equivalencia entre 44,1 y 48 kHz, e integrarlos en CI
 - [x] 9.6 Medir el coste de cómputo de `rain` en reproducción sostenida, registrarlo contra el presupuesto declarado y fijar con ese dato el número máximo de capas
-- [ ] 9.7 Verificar que el audio se mantiene sin cortes mientras se interactúa intensamente con la consola, y en una sesión de reproducción prolongada (**pendiente**: el motor ya está conectado a la consola (grupo 12) y funcionando; la comprobación perceptual de "sin cortes" requiere hardware de audio real y escucha humana, no disponibles en este entorno)
+- [x] 9.7 Verificar que el audio se mantiene sin cortes mientras se interactúa intensamente con la consola, y en una sesión de reproducción prolongada (verificado por el usuario en dispositivo real: no se corta el audio en ningún punto)
 
 ## 10. Portado de los ambientes restantes
 
@@ -91,7 +91,7 @@
 - [x] 10.4 Añadir los tests espectrales, de periodicidad y de compatibilidad mono de los tres ambientes, ajustando sus criterios en la referencia
 - [ ] 10.5 Aplicar el protocolo de validación perceptual a los cuatro ambientes, con comparación A/B contra la versión anterior, y registrar el resultado y los defectos aceptados (**pendiente**: requiere escucha humana — el protocolo lo define expresamente como tal)
 - [x] 10.6 Revisar los umbrales de 9.4 con los cuatro renders reales y consolidarlos
-- [ ] 10.7 Retirar el motor y los generadores antiguos, incluido `ScriptProcessorNode`, y verificar que no queda código muerto (**pendiente**: depende de que la 10.5 confirme que el carácter sonoro se conserva o mejora antes de retirar el respaldo)
+- [x] 10.7 Retirar el motor y los generadores antiguos, incluido `ScriptProcessorNode`, y verificar que no queda código muerto (retirado por instrucción directa del usuario, antes de que 10.5 concluyera: mantener ambos motores en paralelo generaba riesgo de mantenimiento; se verificó primero que `src/audio/engine.ts`, `src/audio/sounds/*` y `src/domain/types.ts` no tenían ninguna referencia viva fuera de sí mismos — typecheck, lint y test en verde tras retirarlos)
 
 ## 11. Gramática y vocabulario de comandos
 
@@ -130,7 +130,7 @@
 - [x] 13.5 Persistir tema y esquema como parte de la configuración, y adoptar en el primer arranque la preferencia de esquema del sistema operativo
 - [x] 13.6 Aplicar el tema antes del primer dibujado para que no se perciba un destello de otro esquema al cargar
 - [x] 13.7 Implementar la verificación automatizada de contraste AA sobre las declaraciones de tokens, para cada par de superficie y texto y en ambos esquemas, e integrarla en CI
-- [ ] 13.8 Documentar qué cubre y qué no cubre esa verificación, y revisar los temas también a ojo (**parcial**: documentación hecha en `tokens.contrast.test.ts`; la revisión "a ojo" queda pendiente — requiere mirar la aplicación, no soy quien debe juzgar eso)
+- [x] 13.8 Documentar qué cubre y qué no cubre esa verificación, y revisar los temas también a ojo (documentación en `tokens.contrast.test.ts`; revisión "a ojo" confirmada por el usuario)
 - [x] 13.9 Verificar que todos los temas y tipografías están empaquetados y que cambiar de tema sin conexión no produce peticiones de red
 
 ## 14. Persistencia

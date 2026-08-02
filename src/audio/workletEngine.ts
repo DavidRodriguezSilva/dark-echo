@@ -4,10 +4,9 @@ import { compileLayer, type CompiledLayer } from "./layerCompiler";
 import { rampToValue } from "./transitions";
 
 /**
- * Motor de audio sobre `AudioWorklet` (capacidad `audio-engine`). Convive en
- * paralelo con `AudioEngine` (design.md D11) hasta que `rain` pase los tests
- * de senal (tarea 9.5) y los ambientes restantes queden portados (tarea
- * 10.7): en ese momento este motor sustituye al antiguo.
+ * Motor de audio sobre `AudioWorklet` (capacidad `audio-engine`). Sustituye
+ * al antiguo motor sobre `ScriptProcessorNode` (design.md D11, tarea 10.7),
+ * ya retirado del repositorio.
  */
 
 // synthesis-reference, "Presupuesto de coste de computo" (tarea 9.6): el
