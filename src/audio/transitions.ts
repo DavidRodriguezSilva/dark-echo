@@ -5,7 +5,7 @@
  */
 export function rampToValue(
   param: AudioParam,
-  context: AudioContext,
+  context: BaseAudioContext,
   target: number,
   durationSeconds: number
 ): void {

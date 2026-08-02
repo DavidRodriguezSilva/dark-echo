@@ -1,12 +1,38 @@
 import type { AmbientMixer } from "../audio/ambientMixer";
-import { listCompositionSourceIds, type CompositionEngine } from "../audio/composition/compositionEngine";
+import {
+  listCompositionSourceIds,
+  type CompositionEngine,
+} from "../audio/composition/compositionEngine";
 import { listAmbients } from "../domain/catalog";
+import { listEnvironments, listModifiers, listOcclusions } from "../domain/composition/catalog";
 import { CommandRegistry } from "./registry";
 import type { CommandDescriptor, CommandResult } from "./types";
 import { commandHelp, generalHelp } from "./help";
 
 function fromMixerResult(result: { ok: boolean; message: string }): CommandResult {
   return { kind: result.ok ? "response" : "error", message: result.message };
+}
+
+/**
+ * Igual que `fromMixerResult`, pero adjunta la advertencia de afinidad baja
+ * del motor de composición cuando la hay (capacidad `command-console`,
+ * "Advertencia de compatibilidad no bloqueante").
+ *
+ * La advertencia acompaña a la confirmación de que la orden se ejecutó: no
+ * es un `kind: "error"` ni una segunda confirmación, porque la combinación
+ * de baja afinidad **sí se aplica** — el sistema informa, no impide
+ * (design.md D5).
+ */
+function fromCompositionResult(result: {
+  ok: boolean;
+  message: string;
+  warning?: string;
+}): CommandResult {
+  if (!result.ok) return { kind: "error", message: result.message };
+  return {
+    kind: "response",
+    message: result.warning ? `${result.message}\n${result.warning}` : result.message,
+  };
 }
 
 /**
@@ -97,27 +123,98 @@ export function createCommandRegistry(
       name: "compose",
       aliases: [],
       description:
-        'Motor de composición (piloto): "compose source <ambiente|off>" activa o retira un Source, "compose status" muestra la escena activa, "compose stop" la desmonta. Distinto de "play"/"add"/"remove", que operan el motor actual.',
+        'Motor de composición (piloto): "compose source|environment|occlusion|modifier <id|off>" activa o retira cada componente, "compose distance <metros>" mueve la distancia, "compose list" muestra los componentes disponibles, "compose status" la escena activa y "compose stop" la desmonta. Distinto de "play"/"add"/"remove", que operan el motor actual.',
       forms: [
-        { args: [{ name: "accion", type: "enum", values: ["status", "stop"] }] },
+        { args: [{ name: "accion", type: "enum", values: ["status", "stop", "list"] }] },
         {
           args: [
             { name: "accion", type: "enum", values: ["source"] },
             { name: "id", type: "enum", values: [...listCompositionSourceIds(), "off"] },
           ],
         },
+        {
+          args: [
+            { name: "accion", type: "enum", values: ["environment"] },
+            {
+              name: "id",
+              type: "enum",
+              values: [...listEnvironments().map((e) => e.id), "off"],
+            },
+          ],
+        },
+        {
+          args: [
+            { name: "accion", type: "enum", values: ["occlusion"] },
+            { name: "id", type: "enum", values: [...listOcclusions().map((o) => o.id), "off"] },
+          ],
+        },
+        {
+          args: [
+            { name: "accion", type: "enum", values: ["modifier"] },
+            { name: "id", type: "enum", values: [...listModifiers().map((m) => m.id), "off"] },
+          ],
+        },
+        {
+          args: [
+            { name: "accion", type: "enum", values: ["distance"] },
+            { name: "metros", type: "number", range: [1, 200] },
+          ],
+        },
       ],
       handler: async (args) => {
         const accion = args.accion as string;
+
         if (accion === "status") {
           return { kind: "response", message: composition.status() };
         }
+
         if (accion === "stop") {
-          return fromMixerResult(composition.stop());
+          return fromCompositionResult(composition.stop());
         }
+
+        if (accion === "list") {
+          const section = (title: string, items: { id: string; label: string }[]) =>
+            `${title}:\n${items.map((i) => `  ${i.id} — ${i.label}`).join("\n")}`;
+          return {
+            kind: "response",
+            message: [
+              section(
+                "Sources",
+                listCompositionSourceIds().map((id) => ({ id, label: id }))
+              ),
+              section("Environments", listEnvironments()),
+              section("Occlusions", listOcclusions()),
+              section("Modifiers", listModifiers()),
+            ].join("\n"),
+          };
+        }
+
+        if (accion === "distance") {
+          return fromCompositionResult(
+            await composition.activateModifier("distancia", args.metros as number)
+          );
+        }
+
         const id = args.id as string;
-        return fromMixerResult(
-          id === "off" ? composition.deactivateSource() : await composition.activateSource(id)
+        const off = id === "off";
+
+        if (accion === "source") {
+          return fromCompositionResult(
+            off ? composition.deactivateSource() : await composition.activateSource(id)
+          );
+        }
+        if (accion === "environment") {
+          return fromCompositionResult(
+            off ? composition.deactivateEnvironment() : await composition.activateEnvironment(id)
+          );
+        }
+        if (accion === "occlusion") {
+          return fromCompositionResult(
+            off ? composition.deactivateOcclusion() : await composition.activateOcclusion(id)
+          );
+        }
+        return fromCompositionResult(
+          off ? composition.deactivateModifier() : await composition.activateModifier(id)
         );
       },
     },

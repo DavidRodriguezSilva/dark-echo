@@ -32,6 +32,17 @@ directamente, porque eso es precisamente el tanteo que se quiere evitar.
 | `combustion`         | Combustión               | _(sin ambiente en esta entrega; documentado para `campfires`, fuera de alcance)_ |
 | `descarga-electrica` | Descargas eléctricas     | _(sin ambiente en esta entrega; documentado para tormentas, fuera de alcance)_   |
 
+Modelos del **motor de composición** (change `add-ambient-composition-engine`).
+No describen un fenómeno que suene por sí mismo, sino cómo se transforma lo
+que ya suena — por eso ninguno tiene un ambiente propio en la columna de uso:
+
+| Id                     | Fenómeno                             | Usado por (esta entrega)                         |
+| ---------------------- | ------------------------------------ | ------------------------------------------------ |
+| `reverberacion-sabine` | Reverberación de un recinto          | `Environment`: `cabana`, `casa`, `campo-abierto` |
+| `transmision-masa`     | Transmisión a través de una barrera  | `Occlusion`: `techo-madera`, `ventana-vidrio`    |
+| `resonancia-placa`     | Resonancia propia de una placa       | Respuesta propia de las mismas `Occlusion`       |
+| `atenuacion-distancia` | Atenuación y absorción por distancia | `Modifier`: `distancia`                          |
+
 `combustion` y `descarga-electrica` se documentan ahora porque la capacidad
 `synthesis-reference` exige cobertura mínima de seis clases de fenómeno antes
 de que el primero de sus ambientes (tormentas, fogatas) entre al catálogo —no
@@ -439,6 +450,355 @@ propagación del frente de onda del rayo.
 
 ---
 
+## `reverberacion-sabine` — Reverberación de un recinto
+
+_(Modelo del motor de composición. Un `Environment` no genera sonido: colorea
+lo que suena a través de él.)_
+
+### Modelo
+
+Un recinto devuelve una cola reverberante cuya duración depende de cuánta
+energía absorben sus superficies frente a cuánto volumen encierra. La
+**fórmula de Sabine** lo expresa directamente:
+
+```text
+RT60 = 0.161 · V / A,    con A = Σ (S_i · α_i)
+```
+
+`V` es el volumen en m³, `A` la absorción equivalente en m² sabin, y `α` el
+coeficiente de absorción del material —adimensional, entre 0 y 1—, tabulado
+por banda de octava en cualquier manual de acústica arquitectónica. La
+constante 0.161 s/m sale de `24·ln(10)/c` con `c ≈ 343 m/s`.
+
+La respuesta al impulso **se sintetiza, no se graba**. Esto no es una
+preferencia estilística: el producto no reproduce audio pregrabado en ningún
+punto (`procedural-ambiences`), y un reverb por convolución con una respuesta
+medida en una sala real lo violaría. En su lugar se genera ruido blanco
+sembrado, se separa en tres bandas con filtros de un polo y cada banda se
+multiplica por su propia envolvente `exp(-6.9078·t/RT60_banda)` —el
+decaimiento que cae exactamente 60 dB en RT60 segundos, porque `ln(10³) =
+6.9078`—. El resultado conserva lo que hace convincente a un reverb (cola
+densa, sin patrón) sin introducir ninguna grabación.
+
+Se generan dos canales con **flujos de ruido independientes**, nunca
+desfasando o invirtiendo el mismo flujo: el desfase se cancela al sumar a
+mono, y una parte del uso previsto es el altavoz mono de un teléfono (ver
+"Criterios de imagen estéreo"). La respuesta se normaliza a energía unitaria
+para que un entorno más reverberante no suene además más fuerte —serían dos
+efectos distintos mezclados en un solo parámetro—.
+
+### Parámetros
+
+| Parámetro                      | Símbolo | Unidad | Rango      | Justificación                                                                                                                                                      |
+| ------------------------------ | ------- | ------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Volumen del recinto            | `V`     | m³     | 0 – 500    | De una cabaña pequeña a una nave; `0` declara un espacio sin recinto (intemperie), donde Sabine no asigna cola.                                                    |
+| Superficie interior expuesta   | `S`     | m²     | 0 – 600    | Coherente con `V` para geometrías habitables reales; se declara aparte porque dos recintos del mismo volumen con distinta forma absorben distinto.                 |
+| Coeficiente de absorción       | `α`     | —      | 0.02 – 0.9 | Valores tabulados por material y banda. Por debajo de 0.02 no existe material real; por encima de 0.9 se entra en cámara anecoica, ajeno al catálogo.              |
+| Fracción de campo reverberante | —       | —      | 0 – 0.8    | Cuánto de lo que se oye llega por el campo reverberante. Un `Source` exterior entra por toda la envolvente a la vez, de forma difusa, así que la fracción es alta. |
+| Frecuencias de cruce de banda  | —       | Hz     | 250 / 2000 | Fijas, sobre las octavas estándar en las que los coeficientes de absorción están tabulados: `low` ≤ 250, `mid` 250–2000, `high` > 2000.                            |
+
+**Valores declarados en esta entrega** (con el RT60 que Sabine deriva de ellos):
+
+| `Environment`   | V (m³) | S (m²) | α (low/mid/high)   | RT60 resultante (low/mid/high) |
+| --------------- | ------ | ------ | ------------------ | ------------------------------ |
+| `cabana`        | 60     | 94     | 0.25 / 0.20 / 0.22 | 0.41 / 0.51 / 0.47 s           |
+| `casa`          | 81     | 119.4  | 0.14 / 0.10 / 0.12 | 0.78 / 1.09 / 0.91 s           |
+| `campo-abierto` | 0      | 0      | 0 / 0 / 0          | 0 / 0 / 0 s (sin cola)         |
+
+La diferencia audible entre `cabana` y `casa` **no se ajustó**: sale de los
+coeficientes. El concreto absorbe la mitad que la madera, así que con solo un
+35% más de volumen la casa casi duplica el RT60 —es un recinto vivo y con
+cola frente a una cabaña corta y seca—. Y en la cabaña el RT60 de graves sale
+_más corto_ que el de medios, al revés que en la mayoría de recintos, porque
+el entablado sobre rastreles absorbe más en graves al resonar contra su
+cámara de aire: es lo que hace que una cabaña suene cálida sin retumbar.
+
+`campo-abierto` no tiene cola porque a la intemperie no hay ninguna que
+añadir. Su papel en esta entrega es sobre todo estructural: al no declarar
+superficies construidas, es el contraejemplo con el que se verifica la
+afinidad posicional (ver `transmision-masa`).
+
+### Fuente y fundamento
+
+Sabine, W. C. (1900), _Reverberation_ — la relación entre volumen, absorción
+y tiempo de reverberación, base de la acústica arquitectónica moderna. Los
+coeficientes de absorción por material y banda de octava son datos tabulados
+estándar de esa misma literatura.
+
+### Alternativas consideradas
+
+- **Respuesta al impulso grabada en una sala real** (la práctica habitual en
+  un reverb por convolución). Descartada de plano: es audio pregrabado, que
+  es exactamente lo que `procedural-ambiences` prohíbe. La síntesis de la
+  respuesta cuesta unos milisegundos una sola vez al activar el entorno.
+- **Red de retardos realimentados (Schroeder/Moorer) con nodos nativos.** Más
+  barata en tiempo de ejecución y sin buffer que generar, pero sus tiempos de
+  retardo se eligen tradicionalmente **a oído** para evitar el timbre
+  metálico —justo el ajuste por tanteo que este documento existe para
+  eliminar—, y no hay forma limpia de derivarlos de `V` y `α`. Descartada por
+  incompatibilidad con la regla de unidades físicas, no por coste.
+- **Solo coloración espectral, sin cola.** Se consideró porque para un
+  `Source` exterior escuchado desde dentro la absorción domina. Se descartó
+  porque deja fuera precisamente lo que distingue una cabaña de una sala de
+  concreto: la duración de la cola, que es donde vive el carácter del
+  recinto. `campo-abierto` sí acaba siendo justo eso —un entorno casi
+  transparente— y sirve para demostrar que un componente puede ser neutro sin
+  dejar de ser válido.
+
+---
+
+## `transmision-masa` — Transmisión a través de una barrera
+
+_(Modelo del motor de composición, camino de transmisión de una `Occlusion`.)_
+
+### Modelo
+
+Lo que atraviesa una barrera homogénea lo predice la **ley de masas** de
+incidencia de campo:
+
+```text
+TL(f) = 20 · log10(m_s · f) − 47   [dB]
+```
+
+con `m_s` la masa superficial en kg/m² (densidad × espesor) y `f` en Hz. La
+constante 47 dB es la de incidencia de campo (la versión de incidencia normal
+usa 48).
+
+La consecuencia importante es que **TL crece 6 dB por octava**: una barrera no
+baja el volumen de forma pareja, se lleva los agudos. Por eso lo ocluido suena
+_apagado_ y no solo más flojo, y por eso el modelo se implementa exactamente
+como lo que es —un pasa-bajos de un polo— igualando su asíntota a la ley:
+
+```text
+|H(f)| = 10^(−TL/20) = 10^(47/20) / (m_s · f)     y     |H(f)| ≈ f_c / f
+⇒  f_c = 10^(47/20) / m_s ≈ 223.9 / m_s
+```
+
+La barrera _es_ un pasa-bajos cuyo corte fija su masa superficial. De ahí sale
+también, sin declarar nada nuevo, el grado de aislamiento: **duplicar el
+espesor duplica `m_s`, baja `f_c` una octava y atenúa 6 dB más en toda la
+banda audible**. La variante gruesa de un material no necesita una segunda
+tabla de valores, solo otro espesor.
+
+### Parámetros
+
+| Parámetro        | Símbolo | Unidad | Rango       | Justificación                                                                                                                  |
+| ---------------- | ------- | ------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Densidad         | `ρ`     | kg/m³  | 300 – 2600  | De una madera ligera al vidrio y el hormigón; valores tabulados por material.                                                  |
+| Espesor          | `h`     | m      | 0.003 – 0.2 | De un acristalamiento simple a un muro; es el único parámetro que cambia entre la variante delgada y la gruesa de un material. |
+| Masa superficial | `m_s`   | kg/m²  | derivada    | `ρ · h`. No se declara: se deriva, porque es la magnitud que de verdad gobierna el aislamiento.                                |
+
+**Valores declarados en esta entrega:**
+
+| `Occlusion`           | ρ (kg/m³) | h (m) | m_s (kg/m²) | f_c (Hz) | TL a 1 kHz |
+| --------------------- | --------- | ----- | ----------- | -------- | ---------- |
+| `techo-madera`        | 500       | 0.020 | 10          | 22.4     | 33 dB      |
+| `techo-madera-grueso` | 500       | 0.040 | 20          | 11.2     | 39 dB      |
+| `ventana-vidrio`      | 2500      | 0.004 | 10          | 22.4     | 33 dB      |
+
+Que `techo-madera` y `ventana-vidrio` salgan **idénticos** en transmisión no
+es un error del catálogo: una tabla de pino de 20 mm y un vidrio de 4 mm
+tienen la misma masa superficial, y por tanto aíslan lo mismo. Es la razón
+conocida de que un acristalamiento simple aísle tan poco como un panel ligero,
+y deja claro que el material por sí solo no determina el aislamiento —lo hace
+la masa por unidad de superficie—. Lo que sí los distingue es su respuesta
+propia (`resonancia-placa`).
+
+### Ganancia de compensación (decisión de producto, no del modelo)
+
+La ley de masas aplicada tal cual deja una barrera de 10 kg/m² unos 33 dB por
+debajo a 1 kHz. Es físicamente correcto —es lo que de verdad aísla un
+acristalamiento simple—, pero convertiría la escena en algo inaudible sin
+subir el volumen maestro cada vez que se activa una oclusión. El runtime
+aplica una **ganancia de compensación fija**, referida a la barrera más ligera
+del catálogo (10 kg/m² a 1 kHz), de modo que:
+
+- el **timbre** que aporta la oclusión —la caída de 6 dB/octava, que es el
+  rasgo audible— se conserva intacto;
+- las diferencias **relativas** entre barreras se mantienen: una barrera del
+  doble de masa sigue sonando 6 dB por debajo de la ligera;
+- el nivel **absoluto** queda utilizable sin tocar el volumen maestro.
+
+Queda declarado aquí como lo que es: una decisión de producto sobre el nivel
+de escucha, no una corrección del modelo físico.
+
+### Fuente y fundamento
+
+Ley de masas de incidencia de campo, resultado estándar de acústica de la
+edificación para el aislamiento de particiones homogéneas.
+
+### Alternativas consideradas
+
+- **Atenuación plana (una ganancia sin filtro).** Es lo que haría un motor que
+  tratara la oclusión como un simple control de volumen. Descartada: sin la
+  pendiente de 6 dB/octava, ocluir suena a bajar el volumen, no a estar detrás
+  de algo. La pendiente _es_ el fenómeno.
+- **Modelo completo con frecuencia crítica y ley de coincidencia.** Más fiel:
+  toda partición real pierde aislamiento en una banda estrecha alrededor de su
+  frecuencia crítica. Se descartó por ahora porque introduce un rasgo estrecho
+  y poco audible sobre un fondo de banda ancha como la lluvia, a cambio de un
+  parámetro más por material. Se reconsiderará si algún `Source` futuro tiene
+  contenido tonal donde esa banda sí se note.
+
+---
+
+## `resonancia-placa` — Resonancia propia de una placa
+
+_(Modelo del motor de composición, camino de respuesta propia de una
+`Occlusion`. Ver `design.md` D9 del change `add-ambient-composition-engine`.)_
+
+### Modelo
+
+Estar bajo un techo mientras llueve no suena a lluvia con menos agudos: suena
+a lluvia **golpeando un techo**. Una barrera no solo deja pasar sonido
+atenuado, también devuelve el suyo propio cuando algo la excita. Modelar la
+oclusión únicamente como atenuación dejaría fuera el rasgo que más carácter
+aporta.
+
+Los impactos de la lluvia son transitorios de banda ancha que excitan los
+**modos propios de flexión** del paño. Para una placa rectangular delgada
+simplemente apoyada:
+
+```text
+f_mn = (π/2) · c_B · [ (m/Lx)² + (n/Ly)² ]
+c_B  = h · √( E / (12·(1−ν²)·ρ) )
+```
+
+con `E` el módulo de Young en Pa, `ν` el coeficiente de Poisson, `ρ` la
+densidad, `h` el espesor y `Lx`,`Ly` la luz entre apoyos.
+
+El amortiguamiento sale del **factor de pérdida** del material: `Q = 1/η`. Esa
+es la clave perceptual —y la razón por la que la madera y el vidrio se
+distinguen pese a tener frecuencias modales del mismo orden—:
+
+- pino, `η ≈ 0.02` → `Q ≈ 50`: cada impacto es un **golpe seco**;
+- vidrio, `η ≈ 0.002` → `Q ≈ 500`: cada impacto **tiñe y se sostiene**.
+
+Se implementa como un banco de filtros de banda en paralelo, alimentado por la
+señal del `Source`. Esa topología satisface por construcción los tres
+requisitos de la capacidad `ambient-occlusion`: la respuesta depende del
+`Source`, escala con su intensidad (más energía incidente, más excitación) y
+es **muda sin `Source`**, porque un filtro sin entrada no produce salida.
+
+### Parámetros
+
+| Parámetro                      | Símbolo | Unidad | Rango        | Justificación                                                                                                                                            |
+| ------------------------------ | ------- | ------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Módulo de Young                | `E`     | Pa     | 5e8 – 8e10   | De una madera blanda al vidrio; valores tabulados por material.                                                                                          |
+| Coeficiente de Poisson         | `ν`     | —      | 0.2 – 0.35   | Rango de sólidos estructurales habituales.                                                                                                               |
+| Factor de pérdida              | `η`     | —      | 0.001 – 0.05 | Lo que separa un material que tiñe de uno que golpea; es el parámetro perceptualmente decisivo.                                                          |
+| Luz entre apoyos               | `Lx,Ly` | m      | 0.3 – 4      | Un paño de cubierta lo delimitan los cabios, no la superficie total del techo: la luz corta es la separación entre apoyos.                               |
+| Número de modos compilados     | —       | —      | 4 – 8        | Cota explícita del coste del banco. Los modos de orden alto se acumulan tan densamente que dejan de ser resonancias discernibles.                        |
+| Nivel de la respuesta propia   | —       | —      | 0 – 1        | Cuánto pesa este camino en la mezcla. **Es una decisión de mezcla, no física**: la física fija qué frecuencias suenan y cuánto duran, no cuánto se oyen. |
+| Cota de `Q` por implementación | —       | —      | [10, 120]    | Un `Q` de varios cientos en un biquad de precisión simple a frecuencia baja es numéricamente inestable. Limita al vidrio (500 → 120), no a la madera.    |
+
+**Valores declarados en esta entrega:**
+
+| `Occlusion`      | Paño (m)  | E (Pa) | η     | Q   | f del modo fundamental |
+| ---------------- | --------- | ------ | ----- | --- | ---------------------- |
+| `techo-madera`   | 3 × 0.6   | 8e9    | 0.02  | 50  | ≈ 110 Hz               |
+| `ventana-vidrio` | 1.2 × 0.8 | 70e9   | 0.002 | 120 | ≈ 22 Hz                |
+
+El módulo de la madera es un **valor efectivo**: el pino es muy anisótropo
+(unos 10 GPa en la dirección de la fibra frente a ~0.5 GPa en la transversal),
+así que un paño completo se representa con un valor intermedio en lugar de
+modelar la anisotropía, que exigiría dos módulos y una orientación de fibra
+por oclusión sin cambiar de forma audible el resultado sobre un excitador de
+banda ancha.
+
+### Fuente y fundamento
+
+Teoría clásica de vibración de placas delgadas (Kirchhoff–Love) para las
+frecuencias propias; factores de pérdida por material tabulados en la
+literatura de vibroacústica. La relación `Q = 1/η` es la definición estándar
+del factor de calidad a partir del amortiguamiento estructural.
+
+### Alternativas consideradas
+
+- **Un `Source` secundario sincronizado con los impactos del principal.**
+  Sería la lectura literal de "el techo suena": generar sus propios eventos.
+  Descartada porque exigiría que la `Occlusion` leyera el estado interno del
+  `Source` para saber cuándo cae cada gota, acoplando dos componentes que el
+  motor mantiene deliberadamente desacoplados. El banco resonante obtiene lo
+  mismo _sin_ acoplamiento: los impactos ya vienen en la señal.
+- **Una capa de ruido propia de la oclusión, con su propia envolvente.**
+  Descartada por la misma razón y una peor: sonaría también sin `Source`,
+  violando el requisito de que la barrera sea muda sin nada que la excite.
+- **Síntesis modal completa con excitación explícita por evento** (una voz por
+  impacto, como `impacto-gota`). Más fiel al detalle de cada golpe, pero
+  duplicaría el coste del camino granular ya existente y volvería a exigir
+  conocer los eventos del `Source`. El filtrado resonante es la misma física
+  vista como función de transferencia en lugar de como síntesis por evento.
+
+---
+
+## `atenuacion-distancia` — Atenuación y absorción por distancia
+
+_(Modelo del motor de composición, `Modifier` de distancia.)_
+
+### Modelo
+
+Atenuación y distancia son, en la práctica, el mismo concepto
+(`openspec/project.md`), así que el modelo los expresa juntos —y tienen que ir
+juntos, porque aplicar solo el primero suena a bajar el volumen, no a
+alejarse—:
+
+1. **Ley del inverso del cuadrado**: el nivel cae 6 dB por cada duplicación de
+   la distancia. En presión sonora, la ganancia lineal es `d_ref / d`.
+2. **Absorción atmosférica**: el aire se lleva las frecuencias altas, y lo
+   hace aproximadamente con el cuadrado de la frecuencia. Se modela como un
+   pasa-bajos cuyo corte cae con la raíz de la distancia:
+
+```text
+α_aire(f) ≈ 0.0025 · (f/1000)²   [dB/m]
+f_c(d) = 1000 · √( presupuesto_dB / (0.0025 · d) )
+```
+
+Por eso una fuente lejana no solo suena más floja: suena **apagada**. Ese es
+el rasgo que hace que se perciba como distancia y no como volumen.
+
+Que el `Modifier` sea dos parámetros rampables sobre la propia señal del
+`Source` es también lo que lo hace **autocontenido** en el sentido que exige
+la capacidad `ambient-modifiers`: mover la distancia en el tiempo es rampar
+esos dos valores, sin leer el estado de ningún otro `Source` de la escena. Un
+`Source` que se acerca o se aleja es este `Modifier` variando su valor, no una
+interacción entre componentes.
+
+### Parámetros
+
+| Parámetro                | Símbolo | Unidad | Rango   | Justificación                                                                                                                                                                                    |
+| ------------------------ | ------- | ------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Distancia                | `d`     | m      | 1 – 200 | Por debajo de 1 m no se amplifica (la referencia es la distancia mínima); por encima de 200 m la absorción deja la lluvia por debajo de los 400 Hz útiles y deja de ser reconocible como lluvia. |
+| Distancia de referencia  | `d_ref` | m      | 1       | Distancia a la que la ganancia es unitaria.                                                                                                                                                      |
+| Presupuesto de absorción | —       | dB     | 3       | Cuántos dB de absorción atmosférica marcan la frecuencia de corte. 3 dB es el punto de media potencia, coherente con cómo se define el corte del resto de filtros del proyecto.                  |
+
+### Fuente y fundamento
+
+Ley del inverso del cuadrado para propagación en campo libre; coeficientes de
+absorción atmosférica del orden de magnitud de la norma ISO 9613-1 (_Acoustics
+— Attenuation of sound during propagation outdoors_) a 20 °C y 50% de humedad
+relativa.
+
+### Alternativas consideradas
+
+- **Solo atenuación de nivel, sin filtrado.** Es el modelo ingenuo de
+  "distancia = volumen". Descartado: la fracción de energía en agudos no
+  cambiaría, y el resultado se percibe como alguien bajando el mando, no como
+  una fuente que se aleja. La verificación de este modelo (`compositionStages.signal.test.ts`)
+  mide justamente esa fracción, no el nivel, para que la diferencia quede
+  demostrada y no supuesta.
+- **Retardo de propagación con la distancia.** Físicamente real (~3 ms por
+  metro), pero inaudible sin un evento visual con el que compararlo y sin una
+  segunda fuente a otra distancia. Fuera de alcance mientras el piloto tenga
+  un solo `Source`; se reconsiderará con varios `Source` a distancias
+  distintas.
+- **Humedad y temperatura como parámetros declarables.** La absorción real
+  depende de ambas. Se fijan en condiciones estándar porque exponerlas
+  añadiría dos controles cuyo efecto audible sobre ruido de banda ancha es muy
+  inferior al de la propia distancia.
+
+---
+
 ## Criterios de aceptación
 
 ### Criterios espectrales por ambiente
@@ -594,6 +954,39 @@ muy por debajo del presupuesto del 40%.
   porque el hardware lo exija. Se revisa si una medición en un dispositivo
   real de gama baja (pendiente, requiere hardware — ver tarea 15.5) muestra
   lo contrario.
+
+#### Presupuesto del motor de composición
+
+El motor de composición **no hereda esta medición**: añade una convolución y
+un banco de resonadores que el motor de capas no tiene, así que su coste se
+midió aparte en lugar de suponerlo (change `add-ambient-composition-engine`,
+tarea 8.3).
+
+**Medido** sobre la escena más cargada que el piloto puede montar —`rain`
+completa (3 capas) + `Environment` `cabana` + `Occlusion` `techo-madera` con
+sus 6 modos + `Modifier` de distancia—, renderizando 30 s de audio:
+
+| Condición de medición                      | Tiempo de reloj | Factor de tiempo real   |
+| ------------------------------------------ | --------------- | ----------------------- |
+| Test aislado                               | ~1.35 s         | ~0.045 (22× más rápido) |
+| Con la suite de señal completa en paralelo | ~2.42 s         | ~0.081 (12× más rápido) |
+
+Se registran las dos porque la diferencia no es ruido de medida: la suite
+corre varios renders concurrentes en el mismo Chromium, así que la segunda
+cifra es la pesimista y la primera la representativa de una máquina
+dedicándose a esto. Comparado con los ~0.028 de `rain` sola por el motor
+actual, la escena completa del motor nuevo cuesta aproximadamente **1.6×**
+—el precio de la convolución y los seis resonadores—. Sigue muy lejos de ser
+el factor limitante: incluso un dispositivo diez veces más lento quedaría por
+debajo del presupuesto del 40%.
+
+- **Cota del banco resonante**: el número de modos lo declara cada
+  `Occlusion` (`modeCount`, 4–8), no lo decide el runtime — es la cota
+  explícita del coste de ese camino, verificada por test.
+- **El límite de 8 capas simultáneas no aplica al motor nuevo**: no compone
+  capas, compone componentes (un `Source`, un `Environment`, una `Occlusion`,
+  un `Modifier`). El límite que sí tiene esta entrega es de arquitectura, no
+  de presupuesto: como mucho uno de cada.
 
 ### Criterios de imagen estéreo
 
