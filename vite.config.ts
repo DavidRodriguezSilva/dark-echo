@@ -21,6 +21,12 @@ export default defineConfig({
       // `updateSW()` — ver src/main.tsx y src/platform/update.ts.
       registerType: "prompt",
       includeAssets: ["favicon.svg"],
+      // Sin esto, `pnpm dev` no inyecta el <link rel="manifest"> ni registra
+      // un service worker real (queda en un stub no-op), asi que el
+      // navegador nunca ofrece instalar la app fuera de un build.
+      devOptions: {
+        enabled: true,
+      },
       manifest: {
         name: "Dark Echo",
         short_name: "dark-echo",

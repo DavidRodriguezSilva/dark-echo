@@ -66,6 +66,23 @@ describe("autocomplete — nombres de comando", () => {
   });
 });
 
+describe("autocomplete — prefijos de acceso rapido", () => {
+  it("completa igual con el prefijo '/', conservandolo en el resultado", () => {
+    const result = autocomplete("/pla", buildRegistry());
+    expect(result).toEqual({ completed: "/play", candidates: ["play"] });
+  });
+
+  it("completa igual con el prefijo '.'", () => {
+    const result = autocomplete(".pla", buildRegistry());
+    expect(result).toEqual({ completed: ".play", candidates: ["play"] });
+  });
+
+  it("completa un valor de argumento con el nombre de comando prefijado", () => {
+    const result = autocomplete("/play ri", buildRegistry());
+    expect(result).toEqual({ completed: "/play river", candidates: ["river"] });
+  });
+});
+
 describe("autocomplete — valores de argumento", () => {
   it("completa el valor de un argumento enum con coincidencia unica", () => {
     const result = autocomplete("play ri", buildRegistry());

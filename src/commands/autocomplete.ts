@@ -13,6 +13,17 @@ export interface AutocompleteResult {
   candidates: string[];
 }
 
+/** Los mismos prefijos de acceso rapido que `parseInput` (command-console). */
+const QUICK_PREFIXES = ["/", "."];
+
+/** Separa un prefijo de acceso rapido del nombre de comando que le sigue. */
+function stripQuickPrefix(token: string): { prefix: string; name: string } {
+  for (const prefix of QUICK_PREFIXES) {
+    if (token.startsWith(prefix)) return { prefix, name: token.slice(prefix.length) };
+  }
+  return { prefix: "", name: token };
+}
+
 function commonPrefix(values: string[]): string {
   if (values.length === 0) return "";
   let prefix = values[0];
@@ -31,18 +42,21 @@ export function autocomplete(input: string, registry: CommandRegistry): Autocomp
   }
 
   // Completando el nombre del comando: sin espacio final y sin argumentos aun.
+  // El prefijo de acceso rapido (si lo hay) se conserva en `completed` pero no
+  // participa en la coincidencia -- ningun nombre de comando lo incluye.
   if (parts.length === 1 && !endsWithSpace) {
-    const prefix = parts[0];
+    const { prefix, name: bareInput } = stripQuickPrefix(parts[0]);
     const names = registry.list().flatMap((d) => [d.name, ...d.aliases]);
-    const matches = names.filter((name) => name.startsWith(prefix));
+    const matches = names.filter((name) => name.startsWith(bareInput));
 
     if (matches.length === 0) return { completed: input, candidates: [] };
-    if (matches.length === 1) return { completed: matches[0], candidates: matches };
-    return { completed: commonPrefix(matches), candidates: matches };
+    if (matches.length === 1) return { completed: prefix + matches[0], candidates: matches };
+    return { completed: prefix + commonPrefix(matches), candidates: matches };
   }
 
   // Completando un valor de argumento.
-  const [commandName, ...args] = parts;
+  const [rawCommandName, ...args] = parts;
+  const { name: commandName } = stripQuickPrefix(rawCommandName);
   const descriptor = registry.find(commandName);
   if (!descriptor) return { completed: input, candidates: [] };
 
@@ -64,7 +78,7 @@ export function autocomplete(input: string, registry: CommandRegistry): Autocomp
   if (matches.length === 0) return { completed: input, candidates: [] };
 
   const completedArg = matches.length === 1 ? matches[0] : commonPrefix(matches);
-  const completed = [commandName, ...precedingTokens, completedArg].join(" ");
+  const completed = [rawCommandName, ...precedingTokens, completedArg].join(" ");
 
   return { completed, candidates: matches };
 }

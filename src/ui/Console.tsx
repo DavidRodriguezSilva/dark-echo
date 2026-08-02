@@ -3,6 +3,8 @@ import type { CommandRegistry } from "../commands/registry";
 import { autocomplete } from "../commands/autocomplete";
 import { CommandHistory } from "../commands/commandHistory";
 import { executeCommand } from "../commands/executeCommand";
+import { commandHelp } from "../commands/help";
+import { parseInput } from "../commands/parseInput";
 import { readFromStorage, writeToStorage } from "../platform/storage";
 import type { SystemNoticeStore } from "../platform/systemNotices";
 
@@ -11,6 +13,10 @@ const HISTORY_VERSION = 1;
 const MAX_OUTPUT_LINES = 500;
 // Distancia (px) al final por debajo de la cual se considera "en el fondo".
 const FOLLOW_THRESHOLD_PX = 16;
+// Sin historial (primer uso), la linea de entrada arranca con un ejemplo
+// listo para ejecutar en vez de en blanco -- el usuario tiene algo con lo
+// que empezar en vez de una pantalla vacia.
+const STARTER_COMMAND = "play rain";
 
 interface OutputLine {
   kind: "echo" | "response" | "error";
@@ -29,6 +35,18 @@ function lineClassName(kind: OutputLine["kind"]): string {
   return "text-terminal-response";
 }
 
+/**
+ * Explicación y variaciones del comando que se está escribiendo (si el
+ * primer token ya resuelve a uno conocido), para que el usuario sepa qué
+ * más puede hacer sin tener que ejecutar `help` aparte.
+ */
+function commandHintFor(input: string, registry: CommandRegistry): string | null {
+  const parsed = parseInput(input);
+  if (!parsed) return null;
+  const descriptor = registry.find(parsed.command);
+  return descriptor ? commandHelp(descriptor) : null;
+}
+
 export function Console({
   registry,
   notices,
@@ -41,11 +59,18 @@ export function Console({
     const persisted = readFromStorage<string[]>(HISTORY_KEY, HISTORY_VERSION) ?? [];
     historyRef.current = new CommandHistory(persisted);
   }
+  const initialValue = historyRef.current.getEntries().length === 0 ? STARTER_COMMAND : "";
 
   const [lines, setLines] = useState<OutputLine[]>(WELCOME_LINES);
-  const [value, setValue] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [value, setValue] = useState(initialValue);
+  const [suggestions, setSuggestions] = useState<string[]>(
+    () => autocomplete(initialValue, registry).candidates
+  );
+  const [commandHint, setCommandHint] = useState<string | null>(() =>
+    commandHintFor(initialValue, registry)
+  );
   const outputRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   // Sigue el final salvo que el usuario haya desplazado la salida hacia
   // atras (command-console, "Seguimiento automatico de la ultima linea").
   const followingRef = useRef(true);
@@ -55,6 +80,16 @@ export function Console({
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [lines]);
+
+  // Foco inicial en la linea de entrada (command-console, "Identidad de
+  // terminal"): un `ref` + `focus()` explicito es mas fiable que el
+  // atributo `autoFocus` solo, sobre todo tras el splash de arranque. Si
+  // hay un comando de ejemplo precargado, tambien se selecciona entero
+  // para que escribir cualquier cosa lo reemplace de inmediato.
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
 
   // Avisos del sistema (persistencia degradada, actualizaciones
   // disponibles): se muestran como una linea mas en cuanto aparecen, sin
@@ -81,6 +116,7 @@ export function Console({
   function updateValue(next: string) {
     setValue(next);
     setSuggestions(autocomplete(next, registry).candidates);
+    setCommandHint(commandHintFor(next, registry));
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -88,6 +124,7 @@ export function Console({
     const command = value;
     setValue("");
     setSuggestions([]);
+    setCommandHint(null);
 
     const result = await executeCommand(command, registry);
     if (!result) return;
@@ -115,16 +152,17 @@ export function Console({
     if (event.key === "ArrowUp") {
       event.preventDefault();
       const previous = historyRef.current!.navigateBack(value);
-      if (previous !== null) setValue(previous);
+      if (previous !== null) updateValue(previous);
     } else if (event.key === "ArrowDown") {
       event.preventDefault();
       const next = historyRef.current!.navigateForward();
-      if (next !== null) setValue(next);
+      if (next !== null) updateValue(next);
     } else if (event.key === "Tab") {
       event.preventDefault();
       const result = autocomplete(value, registry);
       setValue(result.completed);
       setSuggestions(result.candidates);
+      setCommandHint(commandHintFor(result.completed, registry));
     }
   }
 
@@ -141,6 +179,12 @@ export function Console({
           </p>
         ))}
       </div>
+
+      {commandHint && (
+        <p className="px-4 pb-1 text-xs whitespace-pre-wrap text-terminal-response">
+          {commandHint}
+        </p>
+      )}
 
       {suggestions.length > 0 && (
         <p className="truncate px-4 pb-1 text-xs text-terminal-response">
@@ -159,11 +203,11 @@ export function Console({
           ▋
         </span>
         <input
+          ref={inputRef}
           value={value}
           onChange={(event) => updateValue(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder="Escriba un comando..."
-          autoFocus
           className="w-full bg-transparent font-mono text-sm text-foreground outline-none"
         />
       </form>

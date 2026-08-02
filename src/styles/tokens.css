@@ -134,6 +134,25 @@
 }
 
 /* ---------------------------------------------------------------- *
+ * Tema "default" — reafirma los valores base para cortar la herencia de
+ * `--primary`/`--ring` cuando este bloque queda anidado bajo un elemento con
+ * otro `data-theme` activo (p. ej. el swatch de "Predeterminado" dentro del
+ * selector de temas, que de otro modo heredaria el color del tema en uso).
+ * ---------------------------------------------------------------- */
+
+[data-theme="default"] {
+  --primary: oklch(0.815 0.135 158);
+  --primary-foreground: oklch(0.19 0.028 158);
+  --ring: oklch(0.815 0.135 158);
+}
+
+[data-theme="default"].light {
+  --primary: oklch(0.44 0.115 158);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.44 0.115 158);
+}
+
+/* ---------------------------------------------------------------- *
  * Tema "ambar" — sobreescribe solo lo que lo distingue (theming, tarea
  * 13.2): demuestra que la herencia del base funciona, porque los tokens de
  * dominio (--terminal-prompt, --terminal-cursor, etc.) referencian
