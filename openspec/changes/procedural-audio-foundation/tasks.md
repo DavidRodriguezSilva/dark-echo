@@ -69,7 +69,7 @@
 ## 8. Modelo declarativo de ambientes y `rain`
 
 - [x] 8.1 Definir en `domain/` el tipo de declaración de ambiente y de capa, incluyendo la referencia al modelo de síntesis que aplica cada capa y su colocación estéreo
-- [ ] 8.2 Implementar el catálogo y derivar de él el listado de ambientes (**hecho**: `domain/catalog.ts`); eliminando la lista de nombres duplicada en el parser (**pendiente**: se difiere a la tarea 11.11 para no romper `wind`/`river`/`ocean` en el motor antiguo, todavía activo, antes de que la 10.x los porte)
+- [x] 8.2 Implementar el catálogo y derivar de él el listado de ambientes (`domain/catalog.ts`); la lista de nombres duplicada en `src/commands/parser.ts` se eliminó junto con el propio parser en la tarea 11.11, ya retirado
 - [x] 8.3 Declarar `rain` con sus tres capas —cuerpo continuo, granulación de impactos y goteo esporádico— y verificar que cada capa es direccionable de forma individual
 - [x] 8.4 Verificar por escucha prolongada que `rain` evoluciona de forma audible y no revela un patrón repetido
 
@@ -81,7 +81,7 @@
 - [x] 9.4 Calibrar los umbrales espectrales y de periodicidad sobre el render real de `rain` y actualizar la referencia de síntesis con los valores definitivos y su tolerancia
 - [x] 9.5 Añadir el test de perfil espectral de `rain`, el de ausencia de periodicidad y el de equivalencia entre 44,1 y 48 kHz, e integrarlos en CI
 - [x] 9.6 Medir el coste de cómputo de `rain` en reproducción sostenida, registrarlo contra el presupuesto declarado y fijar con ese dato el número máximo de capas
-- [ ] 9.7 Verificar que el audio se mantiene sin cortes mientras se interactúa intensamente con la consola, y en una sesión de reproducción prolongada (**pendiente**: el motor nuevo aún no está conectado a ninguna consola — se retoma cuando la tarea 12.x lo conecte; la comprobación perceptual de "sin cortes" además requiere hardware de audio real, no disponible en este entorno)
+- [ ] 9.7 Verificar que el audio se mantiene sin cortes mientras se interactúa intensamente con la consola, y en una sesión de reproducción prolongada (**pendiente**: el motor ya está conectado a la consola (grupo 12) y funcionando; la comprobación perceptual de "sin cortes" requiere hardware de audio real y escucha humana, no disponibles en este entorno)
 
 ## 10. Portado de los ambientes restantes
 
@@ -104,7 +104,7 @@
 - [x] 11.7 Implementar `play <ambiente>` sustituyendo la mezcla y `play` sin argumento reanudando la conservada, con confirmación que indique explícitamente que sustituyó
 - [x] 11.8 Implementar `add`, `remove`, `stop` conservando la composición, y `reset` vaciando la mezcla
 - [x] 11.9 Implementar `volume` en sus dos formas, `list`, `status` y `clear`
-- [ ] 11.10 Implementar los comandos de escena (`save`, `load`, `list`, `delete`) y de tema (**parcial**: los comandos `theme`/`scheme` quedaron implementados en la tarea 13.3, junto con el resto de theming; los de escena siguen pendientes de session-persistence, tarea 14)
+- [x] 11.10 Implementar los comandos de escena (`save`, `load`, `list`, `delete`) y de tema: `theme`/`scheme` se implementaron en la tarea 13.3 junto con el resto de theming; el comando `scene` (con sus cuatro acciones) se implementó en la tarea 14.3 junto con session-persistence
 - [x] 11.11 Retirar `src/commands/parser.ts` y su lista de sonidos duplicada
 - [x] 11.12 Cubrir con tests la validación, los errores, los alias, los prefijos, la entrada vacía y la semántica de sustituir frente a acumular
 
@@ -155,12 +155,12 @@
 
 ## 16. Documentación del proyecto
 
-- [ ] 16.1 Rellenar `context` en `openspec/config.yaml`: stack, capas de la arquitectura y su dirección de dependencias, contrato de tokens, convenciones y dominio de audio procedural
-- [ ] 16.2 Definir `rules` por artefacto en `openspec/config.yaml` según lo aprendido al redactar este change
-- [ ] 16.3 Reescribir `readme.md`: nombre real del producto, arquitectura vigente, cómo levantar y testear el proyecto, cómo añadir un ambiente nuevo remitiendo a la referencia de síntesis, y cómo añadir un tema
-- [ ] 16.4 Retirar del `readme.md` el contenido superado: la estructura de `src/` que no coincide con la real, el buffer de ~10 s, el enfoque de `ScriptProcessorNode` y el roadmap desalineado
-- [ ] 16.5 Reformular en el `readme.md` el principio de mínimas dependencias como aplicable al núcleo de audio, explicando la decisión de D12
-- [ ] 16.6 Consultar al propietario del proyecto la licencia y sustituir el «pendiente de definir»
+- [x] 16.1 Rellenar `context` en `openspec/config.yaml`: stack, capas de la arquitectura y su dirección de dependencias, contrato de tokens, convenciones y dominio de audio procedural
+- [x] 16.2 Definir `rules` por artefacto en `openspec/config.yaml` según lo aprendido al redactar este change
+- [x] 16.3 Reescribir `readme.md`: nombre real del producto, arquitectura vigente, cómo levantar y testear el proyecto, cómo añadir un ambiente nuevo remitiendo a la referencia de síntesis, y cómo añadir un tema
+- [x] 16.4 Retirar del `readme.md` el contenido superado: la estructura de `src/` que no coincide con la real, el buffer de ~10 s, el enfoque de `ScriptProcessorNode` y el roadmap desalineado
+- [x] 16.5 Reformular en el `readme.md` el principio de mínimas dependencias como aplicable al núcleo de audio, explicando la decisión de D12
+- [x] 16.6 Consultar al propietario del proyecto la licencia y sustituir el «pendiente de definir»
 
 ## 17. Cierre
 
