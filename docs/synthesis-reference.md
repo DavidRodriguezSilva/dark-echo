@@ -75,14 +75,14 @@ una fracción de impactos sin tono asociado.
 
 ### Parámetros
 
-| Parámetro                             | Símbolo | Unidad | Rango           | Justificación                                                                                                                                                                               |
-| ------------------------------------- | ------- | ------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Radio de burbuja                      | `r`     | m      | 0.0004 – 0.0025 | Rango de burbujas arrastradas por gotas de lluvia observado en la literatura de acústica de burbujas; produce, vía Minnaert, tonos de ~1.3 kHz a ~8 kHz, el registro reconocible del goteo. |
-| Duración del decaimiento de burbuja   | `τ_b`   | s      | 0.004 – 0.02    | Las burbujas pequeñas de este rango se amortiguan en pocos ciclos; por debajo suena a clic sin tono, por encima suena a campana, ajeno al fenómeno.                                         |
-| Deriva de tono durante el decaimiento | `Δf/f₀` | %      | 2 – 8           | Chirp ascendente audible pero sutil; documentado en grabaciones de gotas individuales, evita el tono "demasiado puro" de una sinusoide con envolvente simple.                               |
-| Duración del transitorio de impacto   | `τ_i`   | s      | 0.001 – 0.004   | Más corto que la burbuja: el impacto es percusivo, no tonal.                                                                                                                                |
-| Centro de banda del impacto           | `f_i`   | Hz     | 1500 – 6000     | Banda ancha centrada por encima del registro de la burbuja, para que ambas componentes se perciban como capas distintas de un mismo evento.                                                 |
-| Probabilidad de burbuja por impacto   | `p_b`   | —      | 0.5 – 0.85      | Fracción de gotas que suenan con tono además de impacto; por debajo el goteo suena a percusión pura, por encima pierde la variedad de un goteo real.                                        |
+| Parámetro                             | Símbolo | Unidad | Rango           | Justificación                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------- | ------- | ------ | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Radio de burbuja                      | `r`     | m      | 0.0004 – 0.0025 | Rango de burbujas arrastradas por gotas de lluvia observado en la literatura de acústica de burbujas; produce, vía Minnaert, tonos de ~1.3 kHz a ~8 kHz, el registro reconocible del goteo.                                                                                                                                                                                                                                                                                                                                                       |
+| Duración del decaimiento de burbuja   | `τ_b`   | s      | 0.004 – 0.02    | Las burbujas pequeñas de este rango se amortiguan en pocos ciclos; por debajo suena a clic sin tono, por encima suena a campana, ajeno al fenómeno.                                                                                                                                                                                                                                                                                                                                                                                               |
+| Deriva de tono durante el decaimiento | `Δf/f₀` | %      | 2 – 8           | Chirp ascendente audible pero sutil; documentado en grabaciones de gotas individuales, evita el tono "demasiado puro" de una sinusoide con envolvente simple.                                                                                                                                                                                                                                                                                                                                                                                     |
+| Duración del transitorio de impacto   | `τ_i`   | s      | 0.001 – 0.004   | Más corto que la burbuja: el impacto es percusivo, no tonal.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| Centro de banda del impacto           | `f_i`   | Hz     | 1500 – 6000     | Banda ancha centrada por encima del registro de la burbuja, para que ambas componentes se perciban como capas distintas de un mismo evento.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Probabilidad de burbuja por impacto   | `p_b`   | —      | 0.5 – 0.85      | Fracción de gotas que suenan con tono además de impacto; por debajo el goteo suena a percusión pura, por encima pierde la variedad de un goteo real.                                                                                                                                                                                                                                                                                                                                                                                              |
 | Peso de burbuja en la mezcla final    | `w_b`   | —      | 0.15 – 0.5      | Reparto entre el transitorio de impacto y el tono de burbuja. El valor por defecto (0.5) es el reparto original, adecuado para gotas discernibles una a una (goteo, burbujeo de río y mar). A densidad muy alta y decaimiento muy corto —`rain.impactos`, 40 disparos/s— un peso de 0.5 hace que el tono senoidal ascendente domine y se perciba como un disparo o láser en vez de un impacto de lluvia; se bajó a 0.15 (0.25 en `goteo`, donde cada gota se oye por separado y admite algo más de tono) tras confirmarse el defecto por escucha. |
 
 ### Fuente y fundamento
@@ -129,6 +129,15 @@ modelo `impacto-gota` con radios mayores —el burbujeo del propio flujo
 contra piedras y orillas—, más audible cuanto más próxima está la cámara
 imaginaria del oyente a una zona de correntada.
 
+**Refinamiento del catálogo**: el ruido de banda media filtrado por sí solo
+—sin ninguna energía por debajo de su frecuencia de corte inferior— se
+percibía como aire en movimiento (viento), no como una masa de agua: le
+faltaba el "cuerpo" grave que da sensación de volumen a una corriente. Se
+añade una capa continua adicional de ruido marrón pasa-bajos (sin
+modulación propia; la variación la sigue llevando el ruido de banda media)
+para aportar ese grave constante, distinguiendo a `river` de `wind` en el
+registro donde antes coincidían.
+
 ### Parámetros
 
 | Parámetro                      | Símbolo | Unidad    | Rango         | Justificación                                                                                                                                     |
@@ -157,6 +166,15 @@ que la textura sola no puede dar.
   tonal). Suena a "siseo de agua" plano; se conserva el carácter general pero
   se añade el burbujeo para dar la textura granular reconocible de una
   corriente.
+- **Solo el ruido de banda media, sin cuerpo grave ni ajuste de densidad de
+  burbujeo.** Fue la implementación inicial de esta rebanada declarativa
+  (design.md D6): sonaba a una mezcla de viento y océano, no a un río —sin
+  ninguna capa por debajo de 150 Hz y con un burbujeo demasiado disperso
+  (5 eventos/s) para leerse como textura continua. Corregido con la capa de
+  cuerpo grave descrita arriba, subiendo la densidad de burbujeo al tope del
+  rango declarado (8 eventos/s) y acortando el periodo de variación de
+  caudal de `flujo` (20 s → 10 s, dentro del rango declarado de `T_v`) para
+  una turbulencia más rápida que la de un oleaje oceánico.
 - **Simulación de campo de turbulencia (Navier–Stokes simplificado) mapeada a
   audio.** Da el resultado más fiel posible, pero su coste de cómputo es
   incompatible con el presupuesto de este producto (ver _Presupuesto de
@@ -304,10 +322,10 @@ generatrices de ruido que aparecen sin filtro ni voces superpuestas.
 
 ### Parámetros
 
-| Parámetro                   | Símbolo | Unidad  | Rango                | Justificación                                                                                                                          |
-| ---------------------------- | ------- | ------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| Exponente espectral          | `α`     | —       | {0, 1, 2}             | Discreto por definición: cada valor es un color con nombre e identidad acústica propia, no un continuo a interpolar.                    |
-| Pendiente esperada resultante | —       | dB/oct  | 0 (blanco), −3 (rosa), −6 (marrón) | Consecuencia directa de `α`; es lo que verifica el criterio de aceptación, no un parámetro libre.                                        |
+| Parámetro                     | Símbolo | Unidad | Rango                              | Justificación                                                                                                        |
+| ----------------------------- | ------- | ------ | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Exponente espectral           | `α`     | —      | {0, 1, 2}                          | Discreto por definición: cada valor es un color con nombre e identidad acústica propia, no un continuo a interpolar. |
+| Pendiente esperada resultante | —       | dB/oct | 0 (blanco), −3 (rosa), −6 (marrón) | Consecuencia directa de `α`; es lo que verifica el criterio de aceptación, no un parámetro libre.                    |
 
 ### Fuente y fundamento
 
@@ -436,7 +454,7 @@ de verificar de forma robusta sobre ruido de banda ancha.
 | -------- | ------------------------------------------------- | ------ | ------ |
 | `rain`   | 800 Hz – 6 kHz (cuerpo + goteo)                   | 74–76% | ≥ 60%  |
 | `wind`   | 150 Hz – 3 kHz                                    | ~49%   | ≥ 40%  |
-| `river`  | 150 Hz – 5 kHz                                    | ~85%   | ≥ 70%  |
+| `river`  | 150 Hz – 5 kHz                                    | ~76%   | ≥ 70%  |
 | `ocean`  | 100 Hz – 4 kHz (cuerpo grave + estallidos agudos) | ~55%   | ≥ 45%  |
 
 `wind` concentra menos energía en su banda declarada de lo que se esperaba
@@ -459,11 +477,11 @@ magnitud en dB/octava**, por regresión lineal sobre `log(frecuencia)` vs.
 banda el ruido de muestreo de la FFT y la respuesta del filtro transparente
 de 20 kHz distorsionan la pendiente medida sin aportar información real).
 
-| Ambiente      | Pendiente esperada | Medido  | Tolerancia |
-| ------------- | ------------------- | ------- | ---------- |
-| `white-noise` | 0 dB/oct            | 0.026   | ± 1 dB/oct |
-| `pink-noise`  | −3 dB/oct           | −2.936  | ± 1 dB/oct |
-| `brown-noise` | −6 dB/oct           | −5.728  | ± 1 dB/oct |
+| Ambiente      | Pendiente esperada | Medido | Tolerancia |
+| ------------- | ------------------ | ------ | ---------- |
+| `white-noise` | 0 dB/oct           | 0.026  | ± 1 dB/oct |
+| `pink-noise`  | −3 dB/oct          | −2.936 | ± 1 dB/oct |
+| `brown-noise` | −6 dB/oct          | −5.728 | ± 1 dB/oct |
 
 La tolerancia de ±1 dB/oct es deliberadamente holgada: el filtro económico
 de 3 polos de `pink-noise` es una aproximación, no una PSD `1/f` exacta, y
@@ -494,11 +512,11 @@ de ese margen.
 
 **Medido con esta metodología (tarea 9.4/10.4):**
 
-| Ambiente | Periodicidad medida |
-| -------- | ------------------- |
-| `rain`   | 0.146               |
-| `wind`   | 0.062               |
-| `river`  | 0.306               |
+| Ambiente | Periodicidad medida                                                                                          |
+| -------- | ------------------------------------------------------------------------------------------------------------ |
+| `rain`   | 0.146                                                                                                        |
+| `wind`   | 0.062                                                                                                        |
+| `river`  | 0.148 (refinamiento del catálogo: bajó de 0.306 tras acortar el periodo de `flujo` y añadir el cuerpo grave) |
 
 **`ocean` es un caso distinto y no usa este mismo criterio.** El oleaje
 tiene un ritmo auténtico —las olas reales tienen periodo— así que "ausencia
@@ -511,8 +529,9 @@ exactamente en el periodo declarado de la ola (7 s): **medido 0.636**
 claridad — el valor anterior, 0.587, era con el contraste original),
 lejos de 1.0 (que indicaría recurrencia exacta), gracias a la variación
 aleatoria del periodo de ciclo a ciclo (`periodJitter`). Umbral: < 0.85, y
+
 > 0.5 (una cota inferior nueva: sin ella, una regresión que aplanara el
-oleaje hasta volverlo irreconocible seguiría pasando el test).
+> oleaje hasta volverlo irreconocible seguiría pasando el test).
 
 **Hallazgo de la calibración de `rain`**, documentado porque cambió una
 decisión de diseño: el modulador compuesto (D5) inicialmente combinaba las

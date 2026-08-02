@@ -78,9 +78,7 @@ describe("ocean — el oleaje no repite un ciclo idéntico", () => {
     const autocorrelation = normalizedAutocorrelation(envelope);
     const lagAtPeriod = Math.round(WAVE_PERIOD_SECONDS / WINDOW_SECONDS);
 
-    expect(Math.abs(autocorrelation[lagAtPeriod])).toBeGreaterThan(
-      MIN_CORRELATION_AT_WAVE_PERIOD
-    );
+    expect(Math.abs(autocorrelation[lagAtPeriod])).toBeGreaterThan(MIN_CORRELATION_AT_WAVE_PERIOD);
   }, 60000);
 });
 
