@@ -20,7 +20,7 @@ export default defineConfig({
       // sonando. Con "prompt" la aplicacion decide cuando llamar a
       // `updateSW()` — ver src/main.tsx y src/platform/update.ts.
       registerType: "prompt",
-      includeAssets: ["favicon.svg"],
+      includeAssets: ["favicon.ico"],
       // Sin esto, `pnpm dev` no inyecta el <link rel="manifest"> ni registra
       // un service worker real (queda en un stub no-op), asi que el
       // navegador nunca ofrece instalar la app fuera de un build.
