@@ -258,6 +258,16 @@ aplicado aquí en agregado y no como voces individuales—.
   implementar, pero un oleaje que rompe siempre sale mecánico; `p_r` < 1
   introduce la irregularidad que distingue una serie de olas real de un
   metrónomo con espuma.
+- **Estallido de rompiente sin filtrar (ruido blanco de espectro completo).**
+  Fue la implementación inicial de `ocean.rompiente`, a pesar de que la
+  tabla de parámetros ya declaraba un centro de banda para el estallido
+  (1000 - 4000 Hz): un desajuste entre el modelo documentado y el código.
+  Un estallido de banda completa con ataque instantáneo y caída de hasta
+  1.2 s es indistinguible de "cualquier ruido que se apaga" —una antorcha,
+  el viento, estática— sin ninguna característica que lo ancle al agua.
+  Corregido aplicando un filtro pasa-banda centrado en la banda ya
+  declarada (refinamiento del catálogo), ahora que `domain/layer.ts`
+  permite declarar un filtro opcional sobre una capa esporádica completa.
 
 ---
 
@@ -495,9 +505,14 @@ tiene un ritmo auténtico —las olas reales tienen periodo— así que "ausenci
 de periodicidad" no es lo que hay que verificar: sería pedirle a `ocean` que
 deje de sonar a olas. Lo que importa es que un ciclo no sea _idéntico_ al
 anterior. Se verifica midiendo la autocorrelación de la envolvente
-exactamente en el periodo declarado de la ola (7 s): **medido 0.587**,
+exactamente en el periodo declarado de la ola (7 s): **medido 0.636**
+(refinamiento del catálogo: se profundizó el contraste de la modulación de
+`0.3` a `0.12` en el mínimo de gain porque el oleaje no se percibía con
+claridad — el valor anterior, 0.587, era con el contraste original),
 lejos de 1.0 (que indicaría recurrencia exacta), gracias a la variación
-aleatoria del periodo de ciclo a ciclo (`periodJitter`). Umbral: < 0.85.
+aleatoria del periodo de ciclo a ciclo (`periodJitter`). Umbral: < 0.85, y
+> 0.5 (una cota inferior nueva: sin ella, una regresión que aplanara el
+oleaje hasta volverlo irreconocible seguiría pasando el test).
 
 **Hallazgo de la calibración de `rain`**, documentado porque cambió una
 decisión de diseño: el modulador compuesto (D5) inicialmente combinaba las

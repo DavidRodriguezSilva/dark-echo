@@ -107,6 +107,18 @@ export interface SparseLayerDeclaration extends DropVoiceRange {
   /** Duracion a renderizar por voz, en segundos. */
   renderDurationSeconds: number;
   gain: number;
+  /**
+   * Filtro opcional aplicado a cada voz completa (impacto + burbuja), antes
+   * de mezclarse con el resto del ambiente. Sin el, la voz suena a espectro
+   * completo (adecuado para gotas discretas); util cuando el evento debe
+   * quedar anclado a una banda concreta del ambiente en vez de sonar como
+   * ruido generico (p. ej. `ocean.rompiente`, modelo `oleaje`).
+   */
+  filter?: {
+    type: "lowpass" | "highpass" | "bandpass";
+    frequencyHz: number;
+    q?: number;
+  };
 }
 
 export type LayerDeclaration =

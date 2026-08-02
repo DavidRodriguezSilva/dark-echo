@@ -198,6 +198,19 @@ function compileSparseLayer(
   const output = context.createGain();
   output.gain.value = 0;
 
+  // Filtro opcional entre cada voz y la salida de la capa: sin el, cada voz
+  // se conecta directo (espectro completo, adecuado para gotas discretas).
+  let filter: BiquadFilterNode | null = null;
+  let destination: AudioNode = output;
+  if (declaration.filter) {
+    filter = context.createBiquadFilter();
+    filter.type = declaration.filter.type;
+    filter.Q.value = declaration.filter.q ?? 1;
+    filter.frequency.value = declaration.filter.frequencyHz;
+    filter.connect(output);
+    destination = filter;
+  }
+
   const rng = mulberry32(seed);
   const player = new SparseVoicePlayer(
     context,
@@ -211,7 +224,7 @@ function compileSparseLayer(
       bubbleMix: declaration.bubbleMix,
       renderDurationSeconds: declaration.renderDurationSeconds,
     },
-    output
+    destination
   );
 
   const nextInterval = createPoissonEvents(rng, { rateHz: declaration.rateHz });
@@ -226,6 +239,7 @@ function compileSparseLayer(
     dispose() {
       scheduler.stop();
       output.disconnect();
+      filter?.disconnect();
     },
   };
 }

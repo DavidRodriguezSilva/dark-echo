@@ -19,6 +19,12 @@ const MIN_FRACTION_IN_BAND = 0.45;
 const MIN_MONO_COMPATIBILITY = 0.5;
 const WAVE_PERIOD_SECONDS = 7;
 const MAX_CORRELATION_AT_WAVE_PERIOD = 0.85;
+// Cota inferior (refinamiento del catalogo, ocean): sin ella, una futura
+// regresion que aplanara el oleaje hasta volverlo irreconocible seguiria
+// pasando este test con tal de no acercarse a una recurrencia exacta. El
+// valor medido tras profundizar la modulacion es 0.636; el umbral deja
+// margen por debajo sin permitir que el oleaje deje de percibirse.
+const MIN_CORRELATION_AT_WAVE_PERIOD = 0.5;
 const WINDOW_SECONDS = 0.05;
 
 async function renderOceanMix(sampleRateHz: number, durationSeconds: number): Promise<AudioBuffer> {
@@ -61,6 +67,20 @@ describe("ocean — el oleaje no repite un ciclo idéntico", () => {
     const lagAtPeriod = Math.round(WAVE_PERIOD_SECONDS / WINDOW_SECONDS);
 
     expect(Math.abs(autocorrelation[lagAtPeriod])).toBeLessThan(MAX_CORRELATION_AT_WAVE_PERIOD);
+  }, 60000);
+
+  it("el oleaje sigue siendo reconocible: la correlación en su periodo no se aplana hasta desaparecer", async () => {
+    const buffer = await renderOceanMix(44100, 150);
+    const left = buffer.getChannelData(0);
+
+    const windowSize = Math.round(WINDOW_SECONDS * 44100);
+    const envelope = rmsEnvelope(left, windowSize);
+    const autocorrelation = normalizedAutocorrelation(envelope);
+    const lagAtPeriod = Math.round(WAVE_PERIOD_SECONDS / WINDOW_SECONDS);
+
+    expect(Math.abs(autocorrelation[lagAtPeriod])).toBeGreaterThan(
+      MIN_CORRELATION_AT_WAVE_PERIOD
+    );
   }, 60000);
 });
 

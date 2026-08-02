@@ -26,7 +26,11 @@ export const ocean: AmbientDeclaration = {
       filter: { type: "lowpass", frequencyHz: 300 },
       modulation: {
         kind: "wave",
-        min: 0.3,
+        // Contraste profundizado (0.3 -> 0.12) tras confirmarse por escucha
+        // que el oleaje no se percibia con claridad: 0.3 dejaba solo ~10.5 dB
+        // entre valle y cresta, insuficiente para leerse como oleaje frente
+        // al resto de la mezcla (ver docs/synthesis-reference.md, `oleaje`).
+        min: 0.12,
         max: 1,
         periodSeconds: 7,
         riseFraction: 0.35,
@@ -45,6 +49,13 @@ export const ocean: AmbientDeclaration = {
       pitchDrift: 0.02,
       impactDurationRange: [0.3, 1.2],
       bubbleProbability: 0.2,
+      // Sin filtro, el estallido era ruido blanco de espectro completo:
+      // un ataque instantaneo y una caida de banda ancha son indistinguibles
+      // de "cualquier ruido que se apaga" (una antorcha, viento, estatica).
+      // Banda-pasante centrada en el rango ya declarado para el estallido
+      // en el modelo `oleaje` (1000-4000 Hz) para que se ancle al agua/
+      // espuma en vez de sonar generico.
+      filter: { type: "bandpass", frequencyHz: 2000, q: 0.6 },
       renderDurationSeconds: 1.5,
       gain: 0.4,
     },
