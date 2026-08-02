@@ -41,6 +41,16 @@ export interface DropVoiceOptions {
   impactDurationSeconds: number;
   /** Probabilidad de que el impacto arrastre burbuja, en [0, 1]. Rango declarado: 0.5 - 0.85. */
   bubbleProbability?: number;
+  /**
+   * Peso de la burbuja frente al impacto en la mezcla final, en [0, 1]. Por
+   * defecto 0.5 (el reparto original, adecuado para gotas y burbujeo lento).
+   * Para voces muy densas y de decaimiento muy corto, un peso alto produce
+   * un tono senoidal que sube de tono y decae en milisegundos, disparado
+   * decenas de veces por segundo -- perceptualmente indistinguible de un
+   * efecto de laser (synthesis-reference, `impacto-gota`, nota sobre
+   * `rain.impactos`). Bajarlo deja dominar el transitorio de ruido.
+   */
+  bubbleMix?: number;
   sampleRate: number;
 }
 
@@ -58,6 +68,7 @@ export function createDropVoice(rng: Rng, options: DropVoiceOptions): DropVoice 
     pitchDrift,
     impactDurationSeconds,
     bubbleProbability = 1,
+    bubbleMix = 0.5,
     sampleRate,
   } = options;
 
@@ -88,6 +99,6 @@ export function createDropVoice(rng: Rng, options: DropVoiceOptions): DropVoice 
       bubble = Math.sin(bubblePhase) * bubbleEnvelope;
     }
 
-    return impact * 0.5 + bubble * 0.5;
+    return impact * (1 - bubbleMix) + bubble * bubbleMix;
   };
 }

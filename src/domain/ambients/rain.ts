@@ -48,6 +48,11 @@ export const rain: AmbientDeclaration = {
       pitchDrift: 0.05,
       impactDurationRange: [0.001, 0.003],
       bubbleProbability: 0.7,
+      // Peso de burbuja bajo (por defecto 0.5, dsp/dropVoice.ts): a esta
+      // densidad (40/s) y decaimiento tan corto, un tono senoidal al 50% se
+      // percibe como un disparo o laser en vez de un impacto de lluvia —
+      // domina el transitorio de ruido.
+      bubbleMix: 0.15,
       gain: 0.35,
     },
     goteo: {
@@ -60,6 +65,9 @@ export const rain: AmbientDeclaration = {
       pitchDrift: 0.06,
       impactDurationRange: [0.002, 0.004],
       bubbleProbability: 0.85,
+      // Menos densa que `impactos`: se permite algo mas de tono (mismo
+      // razonamiento, umbral mas alto porque cada gota se oye por separado).
+      bubbleMix: 0.25,
       renderDurationSeconds: 0.05,
       gain: 0.5,
     },

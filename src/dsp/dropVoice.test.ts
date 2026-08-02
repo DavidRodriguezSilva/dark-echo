@@ -96,4 +96,48 @@ describe("createDropVoice", () => {
     for (let i = 0; i < 4410; i++) voice();
     expect(voice()).toBe(0);
   });
+
+  it("bubbleMix reparte la mezcla final entre impacto y burbuja segun su valor", () => {
+    // Misma semilla y parametros para las tres voces: `impact` y `bubble` se
+    // calculan de forma identica en cada instancia (bubbleMix no afecta al
+    // consumo del rng ni a la fase de la burbuja), asi que aislando los
+    // extremos (0 y 1) se puede reconstruir la mezcla exacta esperada para
+    // cualquier valor intermedio.
+    const options = {
+      radiusMeters: 0.001,
+      bubbleDecaySeconds: 0.02,
+      pitchDrift: 0.05,
+      impactDurationSeconds: 0.002,
+      bubbleProbability: 1,
+      sampleRate: 44100,
+    };
+
+    const pureImpact = createDropVoice(mulberry32(15), { ...options, bubbleMix: 0 });
+    const pureBubble = createDropVoice(mulberry32(15), { ...options, bubbleMix: 1 });
+    const mixed = createDropVoice(mulberry32(15), { ...options, bubbleMix: 0.15 });
+
+    for (let i = 0; i < 200; i++) {
+      const impact = pureImpact();
+      const bubble = pureBubble();
+      expect(mixed()).toBeCloseTo(impact * 0.85 + bubble * 0.15, 10);
+    }
+  });
+
+  it("sin bubbleMix explícito, reparte al 50/50 (comportamiento por defecto)", () => {
+    const options = {
+      radiusMeters: 0.001,
+      bubbleDecaySeconds: 0.02,
+      pitchDrift: 0.05,
+      impactDurationSeconds: 0.002,
+      bubbleProbability: 1,
+      sampleRate: 44100,
+    };
+
+    const withDefault = createDropVoice(mulberry32(22), options);
+    const explicitHalf = createDropVoice(mulberry32(22), { ...options, bubbleMix: 0.5 });
+
+    for (let i = 0; i < 50; i++) {
+      expect(withDefault()).toBeCloseTo(explicitHalf(), 10);
+    }
+  });
 });

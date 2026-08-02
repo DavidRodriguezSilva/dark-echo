@@ -57,6 +57,8 @@ export interface DropVoiceRange {
   pitchDrift: number;
   impactDurationRange: [number, number];
   bubbleProbability?: number;
+  /** Peso de la burbuja frente al impacto en la mezcla final, en [0, 1]. Por defecto 0.5 (dsp/dropVoice.ts). */
+  bubbleMix?: number;
 }
 
 /**

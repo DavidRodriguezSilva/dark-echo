@@ -167,6 +167,7 @@ function compileGranularLayer(
       pitchDrift: declaration.pitchDrift,
       impactDurationRange: declaration.impactDurationRange,
       bubbleProbability: declaration.bubbleProbability,
+      bubbleMix: declaration.bubbleMix,
     },
   });
 
@@ -207,6 +208,7 @@ function compileSparseLayer(
       pitchDrift: declaration.pitchDrift,
       impactDurationRange: declaration.impactDurationRange,
       bubbleProbability: declaration.bubbleProbability,
+      bubbleMix: declaration.bubbleMix,
       renderDurationSeconds: declaration.renderDurationSeconds,
     },
     output

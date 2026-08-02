@@ -83,6 +83,7 @@ una fracción de impactos sin tono asociado.
 | Duración del transitorio de impacto   | `τ_i`   | s      | 0.001 – 0.004   | Más corto que la burbuja: el impacto es percusivo, no tonal.                                                                                                                                |
 | Centro de banda del impacto           | `f_i`   | Hz     | 1500 – 6000     | Banda ancha centrada por encima del registro de la burbuja, para que ambas componentes se perciban como capas distintas de un mismo evento.                                                 |
 | Probabilidad de burbuja por impacto   | `p_b`   | —      | 0.5 – 0.85      | Fracción de gotas que suenan con tono además de impacto; por debajo el goteo suena a percusión pura, por encima pierde la variedad de un goteo real.                                        |
+| Peso de burbuja en la mezcla final    | `w_b`   | —      | 0.15 – 0.5      | Reparto entre el transitorio de impacto y el tono de burbuja. El valor por defecto (0.5) es el reparto original, adecuado para gotas discernibles una a una (goteo, burbujeo de río y mar). A densidad muy alta y decaimiento muy corto —`rain.impactos`, 40 disparos/s— un peso de 0.5 hace que el tono senoidal ascendente domine y se perciba como un disparo o láser en vez de un impacto de lluvia; se bajó a 0.15 (0.25 en `goteo`, donde cada gota se oye por separado y admite algo más de tono) tras confirmarse el defecto por escucha. |
 
 ### Fuente y fundamento
 
