@@ -1,5 +1,6 @@
 import type { AmbientDeclaration } from "../domain/ambient";
 import { findAmbient, listAmbients } from "../domain/catalog";
+import type { Scene } from "../domain/scene";
 import { MAX_SIMULTANEOUS_LAYERS, WorkletEngine } from "./workletEngine";
 
 /**
@@ -41,16 +42,30 @@ export interface PlaybackSnapshot {
 
 type Listener = () => void;
 
+/** Composicion inicial para restaurar al construir (session-persistence, "Restauracion de la ultima mezcla"). */
+export interface InitialMix {
+  masterVolume?: number;
+  composition?: Record<string, number>;
+}
+
 export class AmbientMixer {
   private readonly engine = new WorkletEngine();
-  // Snapshot tomado en `stop()`: id de capa -> volumen, para que `play` sin
-  // argumento reanude exactamente la misma composicion (command-console,
-  // "stop conserva la composicion").
+  // Snapshot tomado en `stop()` o restaurado al construir: id de capa ->
+  // volumen, para que `play` sin argumento reanude exactamente esa
+  // composicion (command-console, "stop conserva la composicion"; y
+  // session-persistence, "Restauracion de la ultima mezcla" — arranca en
+  // estado detenido y una sola accion basta para reanudarla).
   private conservedComposition: Map<string, number> | null = null;
   private readonly listeners = new Set<Listener>();
   private snapshot: PlaybackSnapshot = { mix: { kind: "empty" }, masterVolume: 0.5 };
 
-  constructor() {
+  constructor(initial?: InitialMix) {
+    if (initial?.masterVolume !== undefined) {
+      this.engine.setMasterVolume(initial.masterVolume);
+    }
+    if (initial?.composition && Object.keys(initial.composition).length > 0) {
+      this.conservedComposition = new Map(Object.entries(initial.composition));
+    }
     this.publish();
   }
 
@@ -76,6 +91,11 @@ export class AmbientMixer {
       id,
       volume: this.engine.getLayerVolume(id) ?? 0,
     }));
+  }
+
+  private layerDeclaration(id: string) {
+    const [ambientId, layerKey] = id.split(".");
+    return findAmbient(ambientId)?.layers[layerKey];
   }
 
   private publish(): void {
@@ -228,6 +248,59 @@ export class AmbientMixer {
     this.conservedComposition = null;
     this.publish();
     return { ok: true, message: "Mezcla vaciada." };
+  }
+
+  /**
+   * La composicion vigente (sonando o conservada tras `stop`), para guardar
+   * como escena o para el recuerdo de la ultima mezcla (session-persistence).
+   * `null` cuando no hay nada que guardar.
+   */
+  getComposition(): Scene | null {
+    const { mix } = this.snapshot;
+    if (mix.kind === "empty") return null;
+    return { layers: Object.fromEntries(mix.layers.map((l) => [l.id, l.volume])) };
+  }
+
+  /**
+   * Sustituye la mezcla activa por la composicion exacta de una escena
+   * (session-persistence, "Guardado y recarga de una escena"): a diferencia
+   * de `play`/`resume`, que agrupan por ambiente completo, esto añade
+   * exactamente las capas declaradas — necesario porque una escena puede
+   * conservar un subconjunto de las capas de un ambiente. El retiro y la
+   * incorporacion comparten el mismo desvanecimiento sin clics que ya usan
+   * `add`/`remove` (tarea 7.9), así que la transicion entre mezclas es
+   * suave y sin corte audible (tarea 14.4).
+   */
+  async loadComposition(scene: Scene): Promise<MixerResult> {
+    const entries = Object.entries(scene.layers);
+    if (entries.length > MAX_SIMULTANEOUS_LAYERS) {
+      return {
+        ok: false,
+        message: `La escena necesita ${entries.length} capas y el límite es ${MAX_SIMULTANEOUS_LAYERS}.`,
+      };
+    }
+
+    for (const id of this.engine.activeLayerIds) {
+      this.engine.removeLayer(id);
+    }
+    this.conservedComposition = null;
+
+    for (const [id] of entries) {
+      const declaration = this.layerDeclaration(id);
+      if (!declaration) continue;
+      const result = await this.engine.addLayer(id, declaration, this.seedFor(id));
+      if (!result.ok) {
+        this.publish();
+        return { ok: false, message: result.reason };
+      }
+    }
+
+    for (const [id, volume] of entries) {
+      this.engine.setLayerVolume(id, volume);
+    }
+
+    this.publish();
+    return { ok: true, message: "Escena cargada." };
   }
 
   setMasterVolume(value: number): MixerResult {

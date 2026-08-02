@@ -135,15 +135,15 @@
 
 ## 14. Persistencia
 
-- [ ] 14.1 Implementar el puerto de almacenamiento en `platform/` con el sobre versionado `{ version, data }`
-- [ ] 14.2 Implementar la persistencia y restauración de la configuración del usuario, con valores por defecto documentados en el primer arranque
-- [ ] 14.3 Implementar guardar, listar, cargar y eliminar escenas, con nombres únicos y confirmación explícita al sobreescribir
-- [ ] 14.4 Implementar la carga de escena sobre una mezcla en curso con transición suave y sin corte audible
-- [ ] 14.5 Implementar el recuerdo de la última mezcla y su restauración al arrancar en estado detenido, reanudable con una sola acción y sin presentarse como si sonara
-- [ ] 14.6 Implementar la migración por versión y el descarte informado cuando no exista migración posible
-- [ ] 14.7 Implementar la tolerancia a almacenamiento corrupto, ausente o de escritura denegada, garantizando que la aplicación arranca y reproduce en todos esos casos
-- [ ] 14.8 Cubrir con tests la serialización de escenas, la migración, el descarte y los casos de almacenamiento degradado
-- [ ] 14.9 Verificar que ningún cambio de configuración, tema o escenas genera peticiones de red
+- [x] 14.1 Implementar el puerto de almacenamiento en `platform/` con el sobre versionado `{ version, data }`
+- [x] 14.2 Implementar la persistencia y restauración de la configuración del usuario, con valores por defecto documentados en el primer arranque
+- [x] 14.3 Implementar guardar, listar, cargar y eliminar escenas, con nombres únicos y confirmación explícita al sobreescribir
+- [x] 14.4 Implementar la carga de escena sobre una mezcla en curso con transición suave y sin corte audible
+- [x] 14.5 Implementar el recuerdo de la última mezcla y su restauración al arrancar en estado detenido, reanudable con una sola acción y sin presentarse como si sonara
+- [x] 14.6 Implementar la migración por versión y el descarte informado cuando no exista migración posible
+- [x] 14.7 Implementar la tolerancia a almacenamiento corrupto, ausente o de escritura denegada, garantizando que la aplicación arranca y reproduce en todos esos casos
+- [x] 14.8 Cubrir con tests la serialización de escenas, la migración, el descarte y los casos de almacenamiento degradado
+- [x] 14.9 Verificar que ningún cambio de configuración, tema o escenas genera peticiones de red
 
 ## 15. Offline y ciclo de vida
 

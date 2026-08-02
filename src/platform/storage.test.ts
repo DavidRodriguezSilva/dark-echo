@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { readFromStorage, writeToStorage } from "./storage";
+import { readFromStorage, readVersioned, writeToStorage } from "./storage";
 
 /** Node no tiene `localStorage` global: un polyfill minimo en memoria basta aqui. */
 function installFakeLocalStorage(): Map<string, string> {
@@ -48,5 +48,71 @@ describe("readFromStorage / writeToStorage", () => {
 
     expect(readFromStorage("historial", 1)).toBeUndefined();
     expect(writeToStorage("historial", 1, ["play rain"])).toBe(false);
+  });
+});
+
+describe("readVersioned", () => {
+  beforeEach(() => {
+    installFakeLocalStorage();
+  });
+
+  it("devuelve 'absent' si no hay nada guardado, sin tratarlo como descarte", () => {
+    expect(readVersioned("config", 1)).toEqual({ status: "absent" });
+  });
+
+  it("devuelve 'ok' cuando la version guardada coincide con la vigente", () => {
+    writeToStorage("config", 1, { masterVolume: 0.4 });
+    expect(readVersioned("config", 1)).toEqual({ status: "ok", data: { masterVolume: 0.4 } });
+  });
+
+  it("migra en cadena hasta la version vigente y persiste el resultado migrado", () => {
+    // Formato v1 hipotetico: campo "volume" en escala 0-100 en vez de 0-1.
+    writeToStorage("config", 1, { volume: 40 });
+
+    const migrations = [
+      {
+        fromVersion: 1,
+        migrate: (data: unknown) => ({ masterVolume: (data as { volume: number }).volume / 100 }),
+      },
+    ];
+
+    const result = readVersioned("config", 2, migrations);
+    expect(result).toEqual({ status: "migrated", data: { masterVolume: 0.4 } });
+
+    // El resultado migrado queda guardado en el formato vigente.
+    expect(readVersioned("config", 2, migrations)).toEqual({
+      status: "ok",
+      data: { masterVolume: 0.4 },
+    });
+  });
+
+  it("aplica mas de una migracion en cadena cuando hace falta", () => {
+    writeToStorage("config", 1, { volume: 40 });
+
+    const migrations = [
+      {
+        fromVersion: 1,
+        migrate: (data: unknown) => ({ masterVolume: (data as { volume: number }).volume / 100 }),
+      },
+      {
+        fromVersion: 2,
+        migrate: (data: unknown) => ({ ...(data as object), consoleTheme: "default" }),
+      },
+    ];
+
+    expect(readVersioned("config", 3, migrations)).toEqual({
+      status: "migrated",
+      data: { masterVolume: 0.4, consoleTheme: "default" },
+    });
+  });
+
+  it("descarta el dato cuando no existe migracion que alcance la version vigente", () => {
+    writeToStorage("config", 1, { volume: 40 });
+    expect(readVersioned("config", 2, [])).toEqual({ status: "discarded" });
+  });
+
+  it("descarta ante contenido corrupto en lugar de lanzar", () => {
+    localStorage.setItem("config", "{esto no es json valido");
+    expect(readVersioned("config", 1)).toEqual({ status: "discarded" });
   });
 });

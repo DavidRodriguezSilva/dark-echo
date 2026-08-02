@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { CommandRegistry } from "../commands/registry";
 import { autocomplete } from "../commands/autocomplete";
 import { CommandHistory } from "../commands/commandHistory";
 import { executeCommand } from "../commands/executeCommand";
 import { readFromStorage, writeToStorage } from "../platform/storage";
+import type { PersistenceNoticeStore } from "../platform/persistenceNotices";
 
 const HISTORY_KEY = "dark-echo.command-history";
 const HISTORY_VERSION = 1;
@@ -33,7 +34,13 @@ function lineClassName(kind: OutputLine["kind"]): string {
   return "text-terminal-response";
 }
 
-export function Console({ registry }: { registry: CommandRegistry }) {
+export function Console({
+  registry,
+  notices,
+}: {
+  registry: CommandRegistry;
+  notices: PersistenceNoticeStore;
+}) {
   const historyRef = useRef<CommandHistory | null>(null);
   if (!historyRef.current) {
     const persisted = readFromStorage<string[]>(HISTORY_KEY, HISTORY_VERSION) ?? [];
@@ -53,6 +60,22 @@ export function Console({ registry }: { registry: CommandRegistry }) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
   }, [lines]);
+
+  // Avisos de persistencia (session-persistence, "Tolerancia a
+  // almacenamiento dañado o no disponible"): se muestran como una linea mas
+  // en cuanto aparecen, sin repetir los ya mostrados.
+  const pendingNotices = useSyncExternalStore(notices.subscribe, notices.getSnapshot);
+  const shownNoticesRef = useRef(0);
+  useEffect(() => {
+    if (pendingNotices.length > shownNoticesRef.current) {
+      const fresh = pendingNotices.slice(shownNoticesRef.current);
+      shownNoticesRef.current = pendingNotices.length;
+      setLines((previous) => [
+        ...previous,
+        ...fresh.map((text): OutputLine => ({ kind: "error", text })),
+      ]);
+    }
+  }, [pendingNotices]);
 
   function handleScroll() {
     const el = outputRef.current;

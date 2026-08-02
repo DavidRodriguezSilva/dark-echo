@@ -20,14 +20,29 @@ export interface AppearanceController {
 }
 
 /**
+ * Lo que el comando `scene` necesita de la persistencia de escenas
+ * (session-persistence, "Gestion de escenas sonoras"), inyectado por ui/
+ * igual que `AppearanceController`, para que `commands/` no dependa de
+ * `platform/` directamente.
+ */
+export interface SceneController {
+  list(): string[];
+  save(name: string, overwrite: boolean): { ok: boolean; message: string };
+  load(name: string): Promise<{ ok: boolean; message: string }>;
+  remove(name: string): { ok: boolean; message: string };
+}
+
+/**
  * Construye el registro de comandos con sus handlers reales, sobre un
  * `AmbientMixer` (command-console, "Vocabulario de comandos y semantica de
- * la mezcla") y un `AppearanceController` (theming, "Selección de tema en
- * caliente"). `scene` queda fuera: depende de session-persistence (tarea 14).
+ * la mezcla"), un `AppearanceController` (theming, "Selección de tema en
+ * caliente") y un `SceneController` (session-persistence, "Gestion de
+ * escenas sonoras").
  */
 export function createCommandRegistry(
   mixer: AmbientMixer,
-  appearance: AppearanceController
+  appearance: AppearanceController,
+  scenes: SceneController
 ): CommandRegistry {
   const registry = new CommandRegistry();
   const ambientIds = listAmbients().map((a) => a.id);
@@ -146,6 +161,51 @@ export function createCommandRegistry(
         const current = appearance.getCurrent();
         appearance.set({ themeId: current.themeId, scheme: args.esquema as "dark" | "light" });
         return { kind: "response", message: `Esquema: ${args.esquema}` };
+      },
+    },
+    {
+      name: "scene",
+      aliases: [],
+      description:
+        'Guarda, carga, lista o elimina escenas con nombre. Guardar sobre un nombre existente exige confirmar con "scene save <nombre> confirmar".',
+      forms: [
+        { args: [{ name: "accion", type: "enum", values: ["list"] }] },
+        {
+          args: [
+            { name: "accion", type: "enum", values: ["save", "load", "delete"] },
+            { name: "nombre", type: "string" },
+          ],
+        },
+        {
+          args: [
+            { name: "accion", type: "enum", values: ["save"] },
+            { name: "nombre", type: "string" },
+            { name: "confirmacion", type: "enum", values: ["confirmar"] },
+          ],
+        },
+      ],
+      handler: async (args) => {
+        const accion = args.accion as string;
+
+        if (accion === "list") {
+          const names = scenes.list();
+          return {
+            kind: "response",
+            message: names.length > 0 ? names.join(", ") : "No hay escenas guardadas.",
+          };
+        }
+
+        const nombre = args.nombre as string;
+
+        if (accion === "save") {
+          return fromMixerResult(scenes.save(nombre, "confirmacion" in args));
+        }
+
+        if (accion === "load") {
+          return fromMixerResult(await scenes.load(nombre));
+        }
+
+        return fromMixerResult(scenes.remove(nombre));
       },
     },
     {

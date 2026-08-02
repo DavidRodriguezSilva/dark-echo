@@ -184,3 +184,105 @@ describe("AmbientMixer — estado observable (design.md D7)", () => {
     expect(notifications).toBe(0);
   });
 });
+
+describe("AmbientMixer — composicion inicial (session-persistence, restauracion de la ultima mezcla)", () => {
+  it("sin composicion inicial, arranca vacío y sin producir sonido", () => {
+    const mixer = new AmbientMixer();
+    expect(mixer.getSnapshot().mix).toEqual({ kind: "empty" });
+    expect(mixer.activeLayerIds).toEqual([]);
+  });
+
+  it("con una composicion inicial, arranca detenido con esas capas sin sonar", () => {
+    const mixer = new AmbientMixer({ composition: { "rain.cuerpo": 0.6 } });
+
+    const snapshot = mixer.getSnapshot();
+    expect(snapshot.mix).toEqual({ kind: "stopped", layers: [{ id: "rain.cuerpo", volume: 0.6 }] });
+    // Detenido: la mezcla no suena, el motor no tiene capas activas todavía.
+    expect(mixer.activeLayerIds).toEqual([]);
+  });
+
+  it("una sola accion de reproduccion basta para reanudar la composicion restaurada", async () => {
+    const mixer = new AmbientMixer({ composition: { "rain.cuerpo": 0.6 } });
+
+    const result = await mixer.play();
+    expect(result.ok).toBe(true);
+    expect(mixer.activeLayerIds).toContain("rain.cuerpo");
+  });
+
+  it("restaura tambien el volumen maestro inicial", () => {
+    const mixer = new AmbientMixer({ masterVolume: 0.33 });
+    expect(mixer.getSnapshot().masterVolume).toBe(0.33);
+  });
+});
+
+describe("AmbientMixer — getComposition (guardar como escena)", () => {
+  it("devuelve null cuando no hay nada que guardar", () => {
+    const mixer = new AmbientMixer();
+    expect(mixer.getComposition()).toBeNull();
+  });
+
+  it("devuelve la composicion vigente mientras suena", async () => {
+    const mixer = new AmbientMixer();
+    await mixer.play("rain");
+    mixer.setLayerVolume("rain", 0.42);
+
+    expect(mixer.getComposition()).toEqual({
+      layers: Object.fromEntries(mixer.activeLayerIds.map((id) => [id, 0.42])),
+    });
+  });
+
+  it("devuelve la composicion conservada tras stop", async () => {
+    const mixer = new AmbientMixer();
+    await mixer.play("rain");
+    const activeIds = [...mixer.activeLayerIds];
+    mixer.stop();
+
+    const composition = mixer.getComposition();
+    expect(composition).not.toBeNull();
+    expect(Object.keys(composition!.layers).sort()).toEqual(activeIds.sort());
+  });
+});
+
+describe("AmbientMixer — loadComposition (session-persistence, cargar una escena)", () => {
+  it("reproduce exactamente las capas y volumenes de la escena", async () => {
+    const mixer = new AmbientMixer();
+
+    const result = await mixer.loadComposition({ layers: { "rain.cuerpo": 0.25 } });
+
+    expect(result.ok).toBe(true);
+    expect(mixer.activeLayerIds).toEqual(["rain.cuerpo"]);
+    const composition = mixer.getComposition();
+    expect(composition).toEqual({ layers: { "rain.cuerpo": 0.25 } });
+  });
+
+  it("un subconjunto de las capas de un ambiente no se completa con el resto", async () => {
+    const mixer = new AmbientMixer();
+    await mixer.play("rain");
+    const allRainLayers = [...mixer.activeLayerIds];
+    // Guarda solo una de las capas de rain, no todas.
+    const partial = { layers: { [allRainLayers[0]]: 0.5 } };
+
+    await mixer.loadComposition(partial);
+
+    expect(mixer.activeLayerIds).toEqual([allRainLayers[0]]);
+  });
+
+  it("cargar una escena sobre una mezcla en curso la sustituye sin dejar capas de la anterior", async () => {
+    const mixer = new AmbientMixer();
+    await mixer.play("wind");
+
+    await mixer.loadComposition({ layers: { "rain.cuerpo": 0.5 } });
+
+    expect(mixer.activeLayerIds.some((id) => id.startsWith("wind."))).toBe(false);
+    expect(mixer.activeLayerIds).toContain("rain.cuerpo");
+  });
+
+  it("rechaza una escena que exceda el limite de capas simultaneas", async () => {
+    const mixer = new AmbientMixer();
+    const layers: Record<string, number> = {};
+    for (let i = 0; i < 20; i++) layers[`rain.capa-${i}`] = 0.5;
+
+    const result = await mixer.loadComposition({ layers });
+    expect(result.ok).toBe(false);
+  });
+});
