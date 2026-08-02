@@ -1,17 +1,19 @@
 # dark-echo
 
 Generador de ambientes sonoros **procedurales** y completamente **offline**:
-lluvia, viento, río y mar sintetizados en tiempo real a partir de modelos
-físicos —no de grabaciones—, para que la escucha prolongada no revele un
-patrón repetido. Se controla desde una consola de comandos con identidad de
-terminal, funciona instalado como PWA sin conexión a la red, y recuerda tu
-configuración y tus escenas entre sesiones.
+lluvia, viento, río, mar y ruido de color (blanco, rosa, marrón) sintetizados
+en tiempo real a partir de modelos físicos —no de grabaciones—, para que la
+escucha prolongada no revele un patrón repetido. Se controla desde una
+consola de comandos con identidad de terminal, funciona instalado como PWA
+sin conexión a la red, y recuerda tu configuración y tus escenas entre
+sesiones. El catálogo completo, implementado y planeado, está en
+[`docs/ambient-catalog-roadmap.md`](docs/ambient-catalog-roadmap.md).
 
 > **Estado**: el cambio arquitectónico `procedural-audio-foundation` (ver
 > `openspec/changes/procedural-audio-foundation/`) está en curso. Este
-> documento describe la arquitectura vigente al momento de leerlo; algunas
-> piezas (retirar el motor antiguo, la documentación final de `openspec/`)
-> siguen abiertas en ese change.
+> documento describe la arquitectura vigente al momento de leerlo; la
+> documentación final de `openspec/` (grupo 17, "Cierre") sigue abierta en
+> ese change.
 
 ## Cómo suena cada ambiente
 

@@ -2,11 +2,12 @@ schema: spec-driven
 
 context: |
   Producto: dark-echo, generador de ambientes sonoros procedurales y
-  offline (lluvia, viento, río, mar), controlado desde una consola de
-  comandos con identidad de terminal, instalable como PWA. Ver `readme.md`
-  para la visión y `docs/synthesis-reference.md` para los modelos de
-  síntesis por fenómeno (parámetros, unidades, fuentes, criterios de
-  aceptación).
+  offline (lluvia, viento, río, mar, ruido blanco/rosa/marrón), controlado
+  desde una consola de comandos con identidad de terminal, instalable como
+  PWA. Ver `readme.md` para la visión, `docs/synthesis-reference.md` para
+  los modelos de síntesis por fenómeno (parámetros, unidades, fuentes,
+  criterios de aceptación) y `docs/ambient-catalog-roadmap.md` para el
+  catálogo completo, implementado y planeado.
 
   Stack: TypeScript estricto, React 19, Vite, Tailwind v4 con primitivas de
   shadcn/ui copiadas al repositorio (no instaladas como librería), Web
