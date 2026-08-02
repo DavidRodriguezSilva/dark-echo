@@ -1,4 +1,5 @@
 import type { AmbientMixer } from "../audio/ambientMixer";
+import { listCompositionSourceIds, type CompositionEngine } from "../audio/composition/compositionEngine";
 import { listAmbients } from "../domain/catalog";
 import { CommandRegistry } from "./registry";
 import type { CommandDescriptor, CommandResult } from "./types";
@@ -54,7 +55,8 @@ export function createCommandRegistry(
   mixer: AmbientMixer,
   appearance: AppearanceController,
   scenes: SceneController,
-  update: UpdateController
+  update: UpdateController,
+  composition: CompositionEngine
 ): CommandRegistry {
   const registry = new CommandRegistry();
   const ambientIds = listAmbients().map((a) => a.id);
@@ -90,6 +92,34 @@ export function createCommandRegistry(
       description: "Desvanece la reproducción, conservando la composición de la mezcla.",
       forms: [{ args: [] }],
       handler: () => fromMixerResult(mixer.stop()),
+    },
+    {
+      name: "compose",
+      aliases: [],
+      description:
+        'Motor de composición (piloto): "compose source <ambiente|off>" activa o retira un Source, "compose status" muestra la escena activa, "compose stop" la desmonta. Distinto de "play"/"add"/"remove", que operan el motor actual.',
+      forms: [
+        { args: [{ name: "accion", type: "enum", values: ["status", "stop"] }] },
+        {
+          args: [
+            { name: "accion", type: "enum", values: ["source"] },
+            { name: "id", type: "enum", values: [...listCompositionSourceIds(), "off"] },
+          ],
+        },
+      ],
+      handler: async (args) => {
+        const accion = args.accion as string;
+        if (accion === "status") {
+          return { kind: "response", message: composition.status() };
+        }
+        if (accion === "stop") {
+          return fromMixerResult(composition.stop());
+        }
+        const id = args.id as string;
+        return fromMixerResult(
+          id === "off" ? composition.deactivateSource() : await composition.activateSource(id)
+        );
+      },
     },
     {
       name: "reset",

@@ -1,13 +1,13 @@
 ## 1. Fundamentos del motor
 
-- [ ] 1.1 Decidir la ubicación del código nuevo dentro de `domain/`, `dsp/`, `audio/`, `commands/` (design.md D7) — documentar la decisión antes de escribir el primer componente, no como una ocurrencia tardía.
-- [ ] 1.2 Definir la gramática mínima de comandos del motor nuevo (verbos para activar/retirar `Source`, `Environment`, `Occlusion`, `Modifier`), distinta de `play`/`add`/`remove` del motor actual.
-- [ ] 1.3 Confirmar que el motor actual y sus comandos existentes no se ven afectados (prueba de humo manual: `play rain` por el motor actual suena exactamente igual que antes de este change).
+- [x] 1.1 Decidir la ubicación del código nuevo dentro de `domain/`, `dsp/`, `audio/`, `commands/` (design.md D7) — documentar la decisión antes de escribir el primer componente, no como una ocurrencia tardía. Resuelto en design.md D7 (adenda): `src/audio/composition/compositionEngine.ts`, `Source` reutiliza `domain/ambient.ts` sin módulo propio, `domain/composition/` se crea al declarar el primer `Environment` (group 3).
+- [x] 1.2 Definir la gramática mínima de comandos del motor nuevo (verbos para activar/retirar `Source`, `Environment`, `Occlusion`, `Modifier`), distinta de `play`/`add`/`remove` del motor actual. Resuelto en design.md D11: comando `compose` (`source`/`status`/`stop` en esta entrega; `environment`/`occlusion`/`modifier` en los groups 3–5).
+- [x] 1.3 Confirmar que el motor actual y sus comandos existentes no se ven afectados (prueba de humo manual: `play rain` por el motor actual suena exactamente igual que antes de este change). Verificado: `src/domain/ambients/rain.ts`, `audio/ambientMixer.ts`, `audio/workletEngine.ts` y `audio/layerCompiler.ts` no se tocaron; `pnpm test` (208/208) sigue en verde, y `audio/composition/compositionEngine.signal.test.ts` añade un caso explícito de coexistencia (activar `rain` en el motor nuevo no altera una mezcla ya sonando en `AmbientMixer`, y viceversa).
 
 ## 2. `Source` (`rain`) solo, por el motor nuevo
 
-- [ ] 2.1 Enrutar el `Source` ya existente de `rain` (capas `cuerpo`/`impactos`/`goteo`, sin modificarlas) a través del motor de composición nuevo.
-- [ ] 2.2 Test de señal: `rain` reproducida por el motor nuevo, sin ningún otro componente activo, cumple los mismos criterios de `docs/synthesis-reference.md` que ya cumple por el motor actual.
+- [x] 2.1 Enrutar el `Source` ya existente de `rain` (capas `cuerpo`/`impactos`/`goteo`, sin modificarlas) a través del motor de composición nuevo. Implementado en `CompositionEngine.activateSource` (`src/audio/composition/compositionEngine.ts`): reutiliza `compileLayer` sobre las capas de `rain.layers` sin modificarlas, enrutadas a un `sceneBus` propio.
+- [x] 2.2 Test de señal: `rain` reproducida por el motor nuevo, sin ningún otro componente activo, cumple los mismos criterios de `docs/synthesis-reference.md` que ya cumple por el motor actual. Escrito en `audio/composition/compositionEngineSource.signal.test.ts` (perfil espectral, periodicidad, compatibilidad mono — mismos umbrales que `rain.signal.test.ts`, reproduciendo el paso adicional del `sceneBus`) y `audio/composition/compositionEngine.signal.test.ts` (activar/retirar, estado observable, coexistencia con `AmbientMixer`). Ejecutado sobre Chromium real tras instalar las dependencias de sistema faltantes: 17/17 pasan (`pnpm test:signal`).
 - [ ] 2.3 Validación perceptual (juicio humano, no automatizable): confirmar que `rain` sola por el motor nuevo suena tan convincente como por el motor actual — comparación A/B directa.
 
 ## 3. `Environment`: bus compartido de escena

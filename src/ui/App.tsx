@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { AmbientMixer } from "../audio/ambientMixer";
+import { CompositionEngine } from "../audio/composition/compositionEngine";
 import { AppearanceStore } from "../platform/appearance";
 import { listThemes } from "../domain/themes";
 import {
@@ -45,6 +46,11 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
   const appearanceRef = useRef<AppearanceStore | null>(null);
   if (!appearanceRef.current) {
     appearanceRef.current = new AppearanceStore();
+  }
+
+  const compositionRef = useRef<CompositionEngine | null>(null);
+  if (!compositionRef.current) {
+    compositionRef.current = new CompositionEngine();
   }
 
   const registryRef = useRef<ReturnType<typeof createCommandRegistry> | null>(null);
@@ -100,7 +106,8 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
       mixerRef.current,
       appearanceController,
       sceneController,
-      updateController
+      updateController,
+      compositionRef.current
     );
   }
 

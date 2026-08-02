@@ -49,6 +49,18 @@ Un intento inicial de puntuar la afinidad `Environment`↔`Occlusion` por coinci
 
 A diferencia del resto de decisiones, dónde vive el código nuevo dentro de `domain/`, `dsp/`, `audio/` y `commands/` no se fija en este documento. Se decidió explícitamente en la exploración que esto se plantea "orgánicamente" a medida que se construye, en vez de imponerse por adelantado — el motor nuevo es una arquitectura sin precedente en este repositorio y forzar una estructura de módulos antes de escribir el primer componente probablemente se equivocaría en algo que solo se ve al implementar. `tasks.md` incluye una tarea explícita para decidir esto antes de escribir el primer componente, no lo evita.
 
+**Resolución (tarea 1.1, al empezar la implementación):** `Source` no obtiene un módulo propio — se reutiliza `domain/ambient.ts`/`domain/layer.ts` tal cual, sin ningún tipo nuevo, porque el `Source` de esta entrega **es** el `AmbientDeclaration` de `rain` ya existente (proposal.md, "sin modificar su propio timbre"). El motor nuevo vive en `src/audio/composition/compositionEngine.ts`: una clase paralela a `WorkletEngine`/`AmbientMixer`, no una extensión de ellas, que comparte el mismo `AudioContext` (`audio/context.ts`, un único contexto por página) pero mantiene su propio `master`/`limiter`/`sceneBus` — ninguna operación de un motor puede afectar los nodos del otro. `commands/commands.ts` gana un nuevo comando (`compose`) en el mismo registro existente, con `CompositionEngine` inyectado igual que `AmbientMixer` (import directo, permitido por `no-restricted-imports`: `commands/` solo tiene prohibido depender de `platform/`/`ui/`, no de `audio/`). `Environment`/`Occlusion`/`Modifiers` (groups 3–5 de `tasks.md`) sí necesitan declaraciones nuevas de dominio — vivirán en `src/domain/composition/`, creado en el momento en que el primer `Environment` se declare (tarea 3.2), no antes: no se scaffoldea un módulo vacío por adelantado.
+
+### D11 — Gramática concreta del comando `compose` (tarea 1.2)
+
+Un único comando nuevo, `compose`, en el mismo registro que `play`/`add`/`remove` (no un registro separado) — mismo patrón que ya usa `scene` (un `accion` enum como primer argumento, con formas de distinta aridad por acción). Grammar de esta entrega (Source-solo):
+
+- `compose source <id|off>` — activa un `Source` del motor nuevo (`rain`, único disponible en el piloto) o lo retira (`off`).
+- `compose status` — describe la escena activa del motor de composición.
+- `compose stop` — desmonta la escena completa.
+
+Se amplía orgánicamente en los groups siguientes, sin romper lo anterior: `compose environment <id|off>` (group 3), `compose occlusion <id|off>` (group 4), `compose modifier <tipo> <valor|off>` (group 5). Ningún verbo colisiona con `play`/`add`/`remove`/`stop` del motor actual — `compose stop` es una acción del comando `compose`, no el comando `stop` existente.
+
 ### D8 — Secuencia del piloto: un `Source` antes que composición multi-`Source`
 
 El piloto se construye y valida con `rain` como único `Source`. Un `Source` adicional (para probar de verdad que `Environment`/`Occlusion` se comparten entre varios `Source`s a la vez, no solo en teoría) queda para un change posterior. Esto sigue el principio de "composición progresiva" de `openspec/project.md`: cada pieza se valida sola antes de exigirle que sostenga una composición más compleja — aquí aplicado también al *orden de construcción*, no solo al comportamiento en tiempo de ejecución.
