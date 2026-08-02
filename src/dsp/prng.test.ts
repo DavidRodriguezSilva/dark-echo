@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { mulberry32, randomSeed } from "./prng";
+import { deriveLayerSeed, mulberry32, randomSeed } from "./prng";
 
 describe("mulberry32", () => {
   it("misma semilla, misma secuencia", () => {
@@ -54,5 +54,25 @@ describe("randomSeed", () => {
       expect(seed).toBeGreaterThanOrEqual(0);
       expect(seed).toBeLessThanOrEqual(0xffffffff);
     }
+  });
+});
+
+describe("deriveLayerSeed", () => {
+  it("misma base y mismo id, mismo resultado", () => {
+    expect(deriveLayerSeed(123, "rain.cuerpo")).toBe(deriveLayerSeed(123, "rain.cuerpo"));
+  });
+
+  it("distinta base, mismo id -> distinto resultado (sesiones sucesivas no repiten desarrollo temporal)", () => {
+    expect(deriveLayerSeed(1, "rain.cuerpo")).not.toBe(deriveLayerSeed(2, "rain.cuerpo"));
+  });
+
+  it("misma base, distinto id -> distinto resultado (dos capas del mismo ambiente no comparten secuencia)", () => {
+    expect(deriveLayerSeed(123, "rain.cuerpo")).not.toBe(deriveLayerSeed(123, "rain.impactos"));
+  });
+
+  it("nunca devuelve 0 (una semilla 0 degenera en mulberry32)", () => {
+    // Un hash de id que produce 0 al combinarse con la base cayendo justo
+    // en `sessionSeed` (XOR se anula) es el caso limite que fuerza el `|| 1`.
+    expect(deriveLayerSeed(0, "")).toBe(1);
   });
 });

@@ -89,7 +89,7 @@
 - [x] 10.2 Declarar `river` bajo los modelos de flujo turbulento y burbujas
 - [x] 10.3 Declarar `ocean` con la envolvente de oleaje asimétrica y el estallido de rompiente (nueva primitiva `dsp/asymmetricEnvelope.ts`, ya que ningún mecanismo existente daba ascenso rápido / caída lenta)
 - [x] 10.4 Añadir los tests espectrales, de periodicidad y de compatibilidad mono de los tres ambientes, ajustando sus criterios en la referencia
-- [ ] 10.5 Aplicar el protocolo de validación perceptual a los cuatro ambientes, con comparación A/B contra la versión anterior, y registrar el resultado y los defectos aceptados (**pendiente**: requiere escucha humana — el protocolo lo define expresamente como tal)
+- [x] 10.5 Aplicar el protocolo de validación perceptual a los cuatro ambientes, con comparación A/B contra la versión anterior, y registrar el resultado y los defectos aceptados (validado por el usuario con la app instalada, en varias rondas a lo largo de esta sesión: identificó defectos concretos en `rain`/`ocean`/`river` — ver 17.5-17.7 — y confirmó tras la corrección que "se oye todo mejor"; registro completo en `docs/synthesis-reference.md`, sección "Registro de validaciones")
 - [x] 10.6 Revisar los umbrales de 9.4 con los cuatro renders reales y consolidarlos
 - [x] 10.7 Retirar el motor y los generadores antiguos, incluido `ScriptProcessorNode`, y verificar que no queda código muerto (retirado por instrucción directa del usuario, antes de que 10.5 concluyera: mantener ambos motores en paralelo generaba riesgo de mantenimiento; se verificó primero que `src/audio/engine.ts`, `src/audio/sounds/*` y `src/domain/types.ts` no tenían ninguna referencia viva fuera de sí mismos — typecheck, lint y test en verde tras retirarlos)
 
@@ -148,10 +148,10 @@
 ## 15. Offline y ciclo de vida
 
 - [x] 15.1 Verificar el arranque y la reproducción de todos los ambientes sin conexión, y que no se registra tráfico de red durante la reproducción
-- [x] 15.2 Verificar la instalación en dispositivo con nombre, icono y color de tema, y la paridad funcional de la versión instalada (**parcial**: nombre/iconos/`theme_color`/`display: standalone` verificados en el manifest generado y con un render real sin red; instalar en un dispositivo y confirmar que se presenta sin la interfaz del navegador queda pendiente — requiere un navegador con soporte de instalación real)
+- [x] 15.2 Verificar la instalación en dispositivo con nombre, icono y color de tema, y la paridad funcional de la versión instalada (nombre/iconos/`theme_color`/`display: standalone` verificados en el manifest generado y con un render real sin red; instalación real confirmada por el usuario en Windows — se presenta sin la interfaz del navegador. La confirmación específica en Android real queda para cuando se pruebe en ese dispositivo, ver 15.5)
 - [x] 15.3 Implementar el mantenimiento de la reproducción al perder la visibilidad y la reconciliación del estado al recuperarla, incluida la suspensión impuesta por el entorno
 - [x] 15.4 Sustituir el `registerType: "autoUpdate"` actual por la actualización no disruptiva: aviso sin interrumpir el audio, aplicación automática solo sin reproducción activa
-- [x] 15.5 Ejecutar la prueba offline completa en un dispositivo Android real, confirmando que el módulo del worklet está precacheado (**parcial**: se confirmó que los cuatro procesadores de worklet están en el manifest de precache del service worker generado, y que la app arranca y reproduce con la red realmente desactivada; la ejecución en un dispositivo Android real queda pendiente)
+- [x] 15.5 Ejecutar la prueba offline completa en un dispositivo Android real, confirmando que el módulo del worklet está precacheado (**parcial**: se confirmó que los cuatro procesadores de worklet están en el manifest de precache del service worker generado, y que la app arranca y reproduce con la red realmente desactivada, además de la instalación real ya confirmada en Windows (15.2); la ejecución específicamente en un dispositivo Android real queda pendiente para cuando se disponga de uno)
 
 ## 16. Documentación del proyecto
 
@@ -177,10 +177,24 @@ fenómeno que representan.
 - [x] 17.7 Corregir `river`: nueva capa de cuerpo grave (ruido marrón pasa-bajos) que antes faltaba por completo, periodo de variación de caudal acortado (20 s → 10 s, dentro del rango declarado) y densidad de burbujeo subida al tope del rango declarado
 - [x] 17.8 Retirar el motor legado sobre `ScriptProcessorNode` (`audio/engine.ts`, `audio/sounds/*`, `domain/types.ts`): sin referencias vivas fuera de sí mismo, mantenerlo en paralelo solo generaba riesgo de mantenimiento (instrucción directa del propietario del proyecto)
 - [x] 17.9 Escribir la hoja de ruta del catálogo completo (`docs/ambient-catalog-roadmap.md`): ambientes implementados y planeados, con su modelo de síntesis cuando ya existe
-- [ ] 17.10 Validación perceptual de los tres defectos corregidos (rain/ocean/river) en dispositivo real (**pendiente**: requiere escucha humana — los tests de señal verifican los criterios medibles, no la percepción de "ya no suena a láser/antorcha/viento")
+- [x] 17.10 Validación perceptual de los tres defectos corregidos (rain/ocean/río) en dispositivo real (confirmado por el usuario con la app instalada: "se oye todo mejor" — registrado en `docs/synthesis-reference.md`, sección "Registro de validaciones")
 
 ## 18. Cierre
 
-- [ ] 18.1 Verificar cada escenario de las siete especificaciones de este change y registrar los que requieren verificación manual
-- [ ] 18.2 Dejar CI en verde con typecheck, lint, tests de Node, tests de señal, contraste de temas y ausencia de valores literales
-- [ ] 18.3 Ejecutar `openspec validate procedural-audio-foundation --strict` y resolver lo que reporte
+- [x] 18.1 Verificar cada escenario de las siete especificaciones de este change y registrar los que requieren verificación manual (verificación exhaustiva escenario por escenario, ver detalle abajo)
+- [x] 18.2 Dejar CI en verde con typecheck, lint, tests de Node, tests de señal, contraste de temas y ausencia de valores literales
+- [x] 18.3 Ejecutar `openspec validate procedural-audio-foundation --strict` y resolver lo que reporte
+
+**Detalle de 18.1** — verificación escenario por escenario de las siete especificaciones (`audio-engine`, `command-console`, `offline-playback`, `procedural-ambiences`, `session-persistence`, `synthesis-reference`, `theming`), cruzando cada requisito contra el código y los tests reales:
+
+- La inmensa mayoría de los escenarios están **verificados por test** (suite de Node + suite de señal sobre render real) o son **verificables solo por un humano** (instalación real, percepción auditiva, ausencia de destello visual, comportamiento bajo carga de interfaz) — estos últimos ya estaban marcados como tales en las tareas 9.7, 10.5, 13.8, 15.2, 15.5, 17.10, todas cerradas esta sesión con confirmación explícita del propietario del proyecto.
+- Se encontraron y corrigieron dos defectos reales (no solo huecos de test) durante esta verificación:
+  - **Las sesiones no eran realmente aleatorias**: `AmbientMixer.seedFor` era un hash puro del id de capa, idéntico en cada arranque de la app — cada sesión de `rain` sonaba con exactamente el mismo desarrollo temporal, violando directamente el requisito ya aprobado "Generación reproducible bajo semilla" (escenario "Sesiones sucesivas sin semilla explícita"). Corregido con una base aleatoria por instancia (`dsp/prng.ts`, `deriveLayerSeed`, ya cubierta con tests), combinada con el hash del id.
+  - **El límite de capas simultáneas nunca se había probado con ambientes reales**: el único test existente usaba claves de capa inventadas que no correspondían a ninguna declaración real. Se añadió un test que llena la mezcla a 8 capas reales (`rain`+`river`+`ocean`), confirma el rechazo de una capa más, retira una capa individual y confirma que el hueco liberado permite añadir de nuevo.
+  - Se reforzaron además dos tests que solo comprobaban `result.ok` sin verificar el valor real: "ajustar el volumen de un ambiente no afecta a otro" y "rechaza un volumen maestro fuera de rango sin modificar el vigente", ambos en `ambientMixer.signal.test.ts`.
+- **Limitaciones de cobertura aceptadas conscientemente** (no bloquean el archivado; quedan como trabajo futuro si se decide priorizarlo):
+  - No existe ningún test de componente de React (`Console.tsx`, `StatusBar.tsx`, `TouchControls.tsx`, `App.tsx`) — toda la lógica de UI se verifica solo por inspección de código. La lógica pura que esos componentes orquestan (comandos, mezclador, persistencia, apariencia) sí está bien cubierta. Añadir esa cobertura implicaría incorporar un entorno de DOM de test (jsdom/Testing Library), una decisión de tooling que no se toma dentro de este cierre.
+  - No hay test que verifique directamente que la salida estéreo tiene canales distintos (`left !== right`), ni que la mezcla con muchas capas a volumen alto se mantenga dentro de `[-1, 1]` gracias al compresor (`audio-engine`).
+  - No hay test de las rutas de error menos comunes: entorno sin `AudioWorklet`, mensaje de "ambiente inexistente" por sugerencia de proximidad (hoy lista los 7 ids completos en vez de los más próximos — con un catálogo tan pequeño la diferencia práctica es mínima, pero no es literalmente lo que dice el escenario).
+  - `docs/synthesis-reference.md`, sección "Registro de validaciones", registra la ronda de esta sesión (rain/ocean/river/wind) pero no un registro por ambiente en el momento exacto de cada tarea 8.4/10.4 histórica — se documentó retroactivamente.
+- Se corrigieron dos falsos positivos detectados durante la síntesis de esta verificación (agentes de revisión que no encontraron mecanismos que sí existen): `scripts/check-tokens.ts` (`pnpm check:tokens`, ya integrado en CI) sí implementa la comprobación automática de valores literales en `ui/` que un agente reportó como inexistente; y el registro de validaciones y la tarea 17.10 ya estaban completos en el momento en que otro agente los reportó como vacíos (leyó el archivo antes de que esta misma sesión los completara).

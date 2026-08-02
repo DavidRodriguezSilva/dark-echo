@@ -1,6 +1,7 @@
 import type { AmbientDeclaration } from "../domain/ambient";
 import { findAmbient, listAmbients } from "../domain/catalog";
 import type { Scene } from "../domain/scene";
+import { deriveLayerSeed, randomSeed } from "../dsp/prng";
 import { MAX_SIMULTANEOUS_LAYERS, WorkletEngine } from "./workletEngine";
 
 /**
@@ -53,6 +54,11 @@ export interface InitialMix {
 
 export class AmbientMixer {
   private readonly engine = new WorkletEngine();
+  // Base aleatoria por instancia (procedural-ambiences, "Sesiones sucesivas
+  // sin semilla explicita"): sin esto, `seedFor` era un hash puro del id de
+  // capa -- identico en cada sesion, asi que "rain" sonaba con exactamente
+  // el mismo desarrollo temporal cada vez que se abria la app.
+  private readonly sessionSeed = randomSeed();
   // Snapshot tomado en `stop()` o restaurado al construir: id de capa ->
   // volumen, para que `play` sin argumento reanude exactamente esa
   // composicion (command-console, "stop conserva la composicion"; y
@@ -93,9 +99,7 @@ export class AmbientMixer {
   }
 
   private seedFor(id: string): number {
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-    return hash || 1;
+    return deriveLayerSeed(this.sessionSeed, id);
   }
 
   private unknownAmbientMessage(ambientId: string): string {

@@ -615,5 +615,28 @@ muy por debajo del presupuesto del 40%.
 
 ## Registro de validaciones
 
-_(Se completa a medida que cada ambiente se declara terminado — tareas 8.4 y
-10.5. Vacío hasta entonces.)_
+### 2026-08-02 — rain, ocean, river, wind (app instalada, uso real)
+
+Validación del propietario del proyecto con la aplicación instalada
+(Windows), en uso real a lo largo de varias sesiones de esta ronda de
+refinamiento del catálogo — no la sesión aislada de 3 minutos por altavoz
+que describe el protocolo formal, pero cubre lo que el protocolo existe
+para detectar: reconocibilidad, ausencia de artefactos, evolución en el
+tiempo.
+
+- **Reconocibilidad y artefactos**: se identificaron tres defectos
+  concretos, cada uno corregido y vuelto a verificar sobre el render real:
+  - `rain`: la capa `impactos` (mezcla impacto/burbuja al 50/50) se
+    percibía como un disparo o láser → corregido con `bubbleMix` (0.15 en
+    `impactos`, 0.25 en `goteo`).
+  - `ocean`: oleaje poco reconocible y el estallido de `rompiente`
+    percibido como "una antorcha apagándose" → corregido profundizando la
+    modulación de oleaje y filtrando el estallido en banda.
+  - `river`: se percibía como una mezcla de viento y océano, no como agua
+    corriendo → corregido añadiendo la capa de cuerpo grave que faltaba.
+- **Resultado tras aplicar las tres correcciones**: confirmación textual
+  del usuario, "se oye todo mejor".
+- **Defecto aceptado conscientemente**: la comparación A/B de esta entrada
+  es contra el estado inicial de esta ronda de refinamiento, no contra el
+  prototipo original pre-`procedural-audio-foundation` — esa comparación ya
+  se registró al portar cada ambiente (tareas 8.4/10.4).

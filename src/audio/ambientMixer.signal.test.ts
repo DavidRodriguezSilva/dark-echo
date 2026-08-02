@@ -122,18 +122,35 @@ describe("AmbientMixer — volumen maestro y por capa", () => {
   it("rechaza un volumen maestro fuera de rango sin modificar el vigente", async () => {
     const mixer = new AmbientMixer();
     await mixer.play("rain");
+    mixer.setMasterVolume(0.4);
+    const before = mixer.getSnapshot().masterVolume;
 
     const result = mixer.setMasterVolume(5);
+
     expect(result.ok).toBe(false);
+    expect(mixer.getSnapshot().masterVolume).toBe(before);
   });
 
   it("ajustar el volumen de un ambiente no afecta a otro", async () => {
     const mixer = new AmbientMixer();
     await mixer.play("rain");
     await mixer.add("wind");
+    const before = mixer.getSnapshot().mix;
+    if (before.kind !== "playing") throw new Error("se esperaba 'playing'");
+    const rainVolumesBefore = before.layers
+      .filter((layer) => layer.id.startsWith("rain."))
+      .map((layer) => layer.volume);
 
     const result = mixer.setLayerVolume("wind", 0.1);
+
     expect(result.ok).toBe(true);
+    const after = mixer.getSnapshot().mix;
+    if (after.kind !== "playing") throw new Error("se esperaba 'playing'");
+    expect(after.layers.find((layer) => layer.id === "wind.cuerpo")?.volume).toBe(0.1);
+    const rainVolumesAfter = after.layers
+      .filter((layer) => layer.id.startsWith("rain."))
+      .map((layer) => layer.volume);
+    expect(rainVolumesAfter).toEqual(rainVolumesBefore);
   });
 });
 
@@ -336,5 +353,30 @@ describe("AmbientMixer — loadComposition (session-persistence, cargar una esce
 
     const result = await mixer.loadComposition({ layers });
     expect(result.ok).toBe(false);
+  });
+});
+
+describe("AmbientMixer — límite de capas simultáneas con ambientes reales (audio-engine)", () => {
+  it("rechaza add() al alcanzar el límite, y retirar una capa libera hueco para el siguiente add()", async () => {
+    const mixer = new AmbientMixer();
+
+    // rain (3 capas) + river (3) + ocean (2) = 8, exactamente el limite.
+    await mixer.play("rain");
+    await mixer.add("river");
+    await mixer.add("ocean");
+    expect(mixer.activeLayerIds).toHaveLength(8);
+
+    const rejected = await mixer.add("wind");
+    expect(rejected.ok).toBe(false);
+    expect(mixer.activeLayerIds).toHaveLength(8);
+
+    const removed = mixer.remove("ocean.rompiente");
+    expect(removed.ok).toBe(true);
+    expect(mixer.activeLayerIds).toHaveLength(7);
+
+    const accepted = await mixer.add("wind");
+    expect(accepted.ok).toBe(true);
+    expect(mixer.activeLayerIds.some((id) => id.startsWith("wind."))).toBe(true);
+    expect(mixer.activeLayerIds).toHaveLength(8);
   });
 });

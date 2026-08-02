@@ -27,3 +27,17 @@ export function mulberry32(seed: number): Rng {
 export function randomSeed(): number {
   return crypto.getRandomValues(new Uint32Array(1))[0];
 }
+
+/**
+ * Deriva la semilla de una capa a partir de una base de sesion y su id
+ * (p. ej. "rain.cuerpo"). Distinta base -> distinta semilla para el mismo id
+ * (sesiones sucesivas no repiten desarrollo temporal); distinto id con la
+ * misma base -> tambien distinta semilla (dos capas del mismo ambiente no
+ * comparten secuencia). Extraida como funcion pura para poder testearla sin
+ * un `AudioContext` real (usada por `audio/ambientMixer.ts`).
+ */
+export function deriveLayerSeed(sessionSeed: number, id: string): number {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
+  return (sessionSeed ^ hash) >>> 0 || 1;
+}
