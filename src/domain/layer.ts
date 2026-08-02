@@ -5,7 +5,7 @@
  * domain/catalog.ts (tarea 8.1/8.2).
  */
 
-export type NoiseColor = "white" | "brown";
+export type NoiseColor = "white" | "pink" | "brown";
 
 /** Colocacion y anchura en el campo estereo (synthesis-reference, "Criterios de imagen estereo"). */
 export interface StereoImage {

@@ -28,6 +28,7 @@ directamente, porque eso es precisamente el tanteo que se quiere evitar.
 | `flujo-turbulento`   | Flujo turbulento de agua | `river`                                                                          |
 | `rafaga-aire`        | Ráfagas de aire          | `wind`                                                                           |
 | `oleaje`             | Oleaje                   | `ocean`                                                                          |
+| `ruido-de-color`     | Ruido de color (1/f^α)   | `white-noise`, `pink-noise`, `brown-noise`                                       |
 | `combustion`         | Combustión               | _(sin ambiente en esta entrega; documentado para `campfires`, fuera de alcance)_ |
 | `descarga-electrica` | Descargas eléctricas     | _(sin ambiente en esta entrega; documentado para tormentas, fuera de alcance)_   |
 
@@ -259,6 +260,77 @@ aplicado aquí en agregado y no como voces individuales—.
 
 ---
 
+## `ruido-de-color` — Ruido de color
+
+### Modelo
+
+A diferencia del resto de esta referencia, aquí el fenómeno no es un sonido
+del mundo físico con una fuente identificable, sino una familia de señales
+estocásticas definidas por su **densidad espectral de potencia** (PSD):
+
+```text
+S(f) ∝ 1 / f^α
+```
+
+con `α` el exponente de color. `α = 0` es ruido blanco (energía igual por
+Hz, PSD plana), `α = 1` es ruido rosa (energía igual por octava —cada
+duplicación de frecuencia reparte la misma potencia—, `-3 dB/octava` en el
+espectro de magnitud) y `α = 2` es ruido marrón o browniano (`-6 dB/octava`,
+resultado de integrar ruido blanco, de ahí que también se le llame "ruido
+rojo"). Los tres son ambientes de un único parámetro fijo —el color— sin
+ningún otro grado de libertad: no hay filtro que dé forma a la banda, ni
+modulación de intensidad ni de frecuencia. Esa ausencia deliberada de
+variación es la definición del fenómeno, no una simplificación del modelo
+como en el resto de esta referencia — un "ruido blanco que varía de
+carácter" dejaría de ser ruido blanco.
+
+`white` y `brown` ya existen como primitivas de `dsp/noise.ts` (usadas hoy
+como fuente de otras capas, p. ej. el cuerpo de `wind` u `ocean`); este
+modelo documenta formalmente su caracterización espectral y añade `pink`,
+que no existía. Exponerlos como ambientes independientes de una sola capa es
+la instancia de menor complejidad de todo el catálogo: son las únicas
+generatrices de ruido que aparecen sin filtro ni voces superpuestas.
+
+### Parámetros
+
+| Parámetro                   | Símbolo | Unidad  | Rango                | Justificación                                                                                                                          |
+| ---------------------------- | ------- | ------- | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Exponente espectral          | `α`     | —       | {0, 1, 2}             | Discreto por definición: cada valor es un color con nombre e identidad acústica propia, no un continuo a interpolar.                    |
+| Pendiente esperada resultante | —       | dB/oct  | 0 (blanco), −3 (rosa), −6 (marrón) | Consecuencia directa de `α`; es lo que verifica el criterio de aceptación, no un parámetro libre.                                        |
+
+### Fuente y fundamento
+
+Caracterización estándar de ruido `1/f^α` (Voss, R. F. y Clarke, J. (1975),
+_"1/f noise" in music and speech_, Nature) y su generación práctica mediante
+el filtro económico de 3 polos de Paul Kellet ("economy pink noise filter",
+técnica de dominio público ampliamente documentada en la literatura de
+síntesis de audio) aplicado sobre ruido blanco — una aproximación IIR barata
+a la densidad espectral `1/f`, sin necesidad de sumar bancos de osciladores
+ni de procesar en el dominio de la frecuencia.
+
+### Alternativas consideradas
+
+- **Síntesis por conformado espectral en el dominio de la frecuencia (FFT
+  inversa de una máscara `1/f^α`).** Exacta, pero exige procesar en bloques
+  con latencia y no encaja con el modelo de generación muestra a muestra del
+  resto del núcleo de audio (`AudioWorkletProcessor`, sin buffers de
+  antelación). Descartada por coste y por romper la arquitectura de
+  generación en tiempo real ya establecida.
+- **Suma de octavas de Voss–McCartney** (varias fuentes de ruido blanco a
+  distintas tasas de refresco, sumadas). Más precisa a baja frecuencia que
+  el filtro de Kellet, pero añade estado y ramas condicionales por octava;
+  para el uso de este producto —un ambiente de fondo, no una herramienta de
+  medición— la aproximación de 3 polos ya cumple el criterio de aceptación
+  declarado más abajo con una fracción del coste. Se reconsiderará si algún
+  ambiente futuro necesita fidelidad espectral más allá de la banda audible
+  típica.
+- **Ruido marrón como integral simple de ruido blanco sin más forma**
+  (`BrownNoise` ya existente en `dsp/noise.ts`, reutilizada sin cambios).
+  Suficiente: un solo polo ya da la pendiente `-6 dB/oct` esperada de
+  `α = 2`, no hace falta el filtro de 3 polos para ese color.
+
+---
+
 ## `combustion` — Combustión
 
 _(Documentado para cobertura mínima de la referencia; sin ambiente que lo use
@@ -364,6 +436,33 @@ toca nada por debajo de su corte). El umbral se ajustó al valor medido en
 lugar de forzar el diseño a una banda que no es la que el ruido marrón
 produce de forma natural; queda para la validación perceptual (tarea 10.5)
 si ese grave adicional se oye bien o hace falta un pasa-altos suave.
+
+### Criterio espectral para ruido de color
+
+`white-noise`, `pink-noise` y `brown-noise` son de espectro completo por
+definición: "fracción de energía en una banda" no es el criterio correcto
+—ocuparían toda banda razonable por igual o por pendiente, nunca
+concentrada— así que en vez de eso se mide la **pendiente del espectro de
+magnitud en dB/octava**, por regresión lineal sobre `log(frecuencia)` vs.
+`log(magnitud)` en una banda de análisis de 100 Hz a 8 kHz (fuera de esa
+banda el ruido de muestreo de la FFT y la respuesta del filtro transparente
+de 20 kHz distorsionan la pendiente medida sin aportar información real).
+
+| Ambiente      | Pendiente esperada | Medido  | Tolerancia |
+| ------------- | ------------------- | ------- | ---------- |
+| `white-noise` | 0 dB/oct            | 0.026   | ± 1 dB/oct |
+| `pink-noise`  | −3 dB/oct           | −2.936  | ± 1 dB/oct |
+| `brown-noise` | −6 dB/oct           | −5.728  | ± 1 dB/oct |
+
+La tolerancia de ±1 dB/oct es deliberadamente holgada: el filtro económico
+de 3 polos de `pink-noise` es una aproximación, no una PSD `1/f` exacta, y
+exigir precisión mayor penalizaría la elección consciente de la alternativa
+más barata (ver "Alternativas consideradas" del modelo `ruido-de-color`).
+
+La ausencia de periodicidad es trivial para los tres —ruido puro sin ninguna
+componente periódica por construcción— y la compatibilidad mono se hereda
+del mismo mecanismo de decorrelación de canales que el resto de capas
+continuas (`stereo.width: 1`), sin necesidad de un caso especial.
 
 ### Umbral de periodicidad
 

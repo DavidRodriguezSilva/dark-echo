@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mulberry32 } from "./prng";
-import { BrownNoise, whiteNoise } from "./noise";
+import { BrownNoise, PinkNoise, whiteNoise } from "./noise";
 
 describe("whiteNoise", () => {
   it("es determinista bajo semilla", () => {
@@ -57,5 +57,37 @@ describe("BrownNoise", () => {
     };
 
     expect(meanAbsDiff(brownSamples)).toBeLessThan(meanAbsDiff(whiteSamples));
+  });
+});
+
+describe("PinkNoise", () => {
+  it("es determinista bajo semilla", () => {
+    const a = new PinkNoise(mulberry32(7));
+    const b = new PinkNoise(mulberry32(7));
+
+    const seqA = Array.from({ length: 50 }, () => a.next());
+    const seqB = Array.from({ length: 50 }, () => b.next());
+
+    expect(seqA).toEqual(seqB);
+  });
+
+  it("es mas suave que el ruido blanco pero mas rapido que el marron (menor/mayor variacion entre muestras consecutivas)", () => {
+    const pink = new PinkNoise(mulberry32(21));
+    const brown = new BrownNoise(mulberry32(21));
+    const white = mulberry32(21);
+
+    const meanAbsDiff = (samples: number[]) => {
+      let total = 0;
+      for (let i = 1; i < samples.length; i++) total += Math.abs(samples[i] - samples[i - 1]);
+      return total / (samples.length - 1);
+    };
+
+    const pinkSamples = Array.from({ length: 5000 }, () => pink.next());
+    const brownSamples = Array.from({ length: 5000 }, () => brown.next());
+    const whiteSamples = Array.from({ length: 5000 }, () => whiteNoise(white));
+
+    const pinkVariation = meanAbsDiff(pinkSamples);
+    expect(pinkVariation).toBeLessThan(meanAbsDiff(whiteSamples));
+    expect(pinkVariation).toBeGreaterThan(meanAbsDiff(brownSamples));
   });
 });

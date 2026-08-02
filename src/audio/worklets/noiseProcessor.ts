@@ -1,10 +1,14 @@
 import { mulberry32, type Rng } from "../../dsp/prng";
-import { BrownNoise, whiteNoise } from "../../dsp/noise";
+import { BrownNoise, PinkNoise, whiteNoise } from "../../dsp/noise";
 
-function createSource(color: "white" | "brown", rng: Rng): () => number {
+function createSource(color: "white" | "pink" | "brown", rng: Rng): () => number {
   if (color === "brown") {
     const brown = new BrownNoise(rng);
     return () => brown.next();
+  }
+  if (color === "pink") {
+    const pink = new PinkNoise(rng);
+    return () => pink.next();
   }
   return () => whiteNoise(rng);
 }
@@ -32,7 +36,7 @@ class NoiseProcessor extends AudioWorkletProcessor {
       seedShared?: number;
       seedLeft?: number;
       seedRight?: number;
-      color?: "white" | "brown";
+      color?: "white" | "pink" | "brown";
       width?: number;
     };
     const color = data.color ?? "white";

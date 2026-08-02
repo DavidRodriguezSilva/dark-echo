@@ -81,21 +81,28 @@ El sistema SHALL exponer el catálogo de ambientes disponibles, incluyendo para 
 
 ### Requirement: Ambientes disponibles en esta entrega
 
-El catálogo SHALL incluir los ambientes `rain`, `wind`, `river` y `ocean`.
+El catálogo SHALL incluir los ambientes `rain`, `wind`, `river`, `ocean`, `white-noise`, `pink-noise` y `brown-noise`.
 
 `rain` SHALL estar compuesto por al menos tres capas diferenciadas —cuerpo continuo, gotas y goteo esporádico— para servir como referencia de composición del modelo.
 
-`wind`, `river` y `ocean` SHALL conservar el carácter sonoro que tienen hoy: `wind` con ráfagas de evolución lenta, `river` con un flujo de banda estrecha y variación leve, y `ocean` con una oscilación lenta de oleaje.
+`wind`, `river` y `ocean` SHALL conservar el carácter sonoro del fenómeno que representan: `wind` con ráfagas de evolución lenta, `river` con un flujo turbulento continuo de textura granular y sin oscilación lenta de oleaje que lo confunda con el mar, y `ocean` con una oscilación lenta de oleaje reconocible y una rompiente que suene a agua, no a un estallido de ruido genérico.
+
+`white-noise`, `pink-noise` y `brown-noise` SHALL ser ambientes de una única capa continua sin filtro que recorte banda ni modulación, cada uno con la pendiente espectral de su color (referencia `ruido-de-color` en `docs/synthesis-reference.md`).
 
 #### Scenario: Reproducción de cada ambiente del catálogo
 
-- **WHEN** el usuario reproduce cualquiera de los cuatro ambientes
-- **THEN** el ambiente suena, es reconocible como el fenómeno natural que representa y sus capas figuran en el estado del sistema
+- **WHEN** el usuario reproduce cualquiera de los siete ambientes
+- **THEN** el ambiente suena, es reconocible como el fenómeno que representa (natural en los primeros cuatro, un color de ruido estable en los últimos tres) y sus capas figuran en el estado del sistema
 
 #### Scenario: Composición multicapa de la lluvia
 
 - **WHEN** el usuario reproduce `rain`
 - **THEN** el estado del sistema muestra sus capas por separado y cada una puede ajustarse de forma independiente
+
+#### Scenario: Ruido de color sin variación de carácter
+
+- **WHEN** el usuario reproduce `white-noise`, `pink-noise` o `brown-noise` durante un periodo prolongado
+- **THEN** su pendiente espectral se mantiene estable dentro de la tolerancia declarada en la referencia de síntesis, sin ninguna evolución de carácter —a diferencia del resto del catálogo, aquí la ausencia de variación es el criterio de aceptación, no una excepción a la "Variación continua de parámetros"
 
 ### Requirement: Generación reproducible bajo semilla
 

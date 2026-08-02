@@ -109,3 +109,58 @@ export function fractionOfEnergyInBand(
   }
   return inBand / total;
 }
+
+/**
+ * Pendiente del espectro de magnitud en dB/octava dentro de `[lowHz, highHz)`
+ * (docs/synthesis-reference.md, `ruido-de-color`), por regresion lineal de
+ * minimos cuadrados sobre `log2(frecuencia)` frente a `20 * log10(magnitud)`
+ * — el criterio correcto para ruido de espectro completo, donde "fraccion de
+ * energia en banda" no discrimina entre colores.
+ */
+export function spectralSlopeDbPerOctave(
+  signal: ArrayLike<number>,
+  sampleRateHz: number,
+  [lowHz, highHz]: [number, number],
+  fftSize = 131072
+): number {
+  if (signal.length < fftSize) {
+    throw new Error(
+      `spectralSlopeDbPerOctave: la senal (${signal.length} muestras) es mas corta que fftSize (${fftSize})`
+    );
+  }
+
+  const start = Math.floor(signal.length / 2 - fftSize / 2);
+  const window = new Float64Array(fftSize);
+  for (let i = 0; i < fftSize; i++) window[i] = signal[start + i];
+
+  const spectrum = magnitudeSpectrum(window);
+
+  const logFrequencies: number[] = [];
+  const magnitudesDb: number[] = [];
+  for (let bin = 1; bin < spectrum.length; bin++) {
+    const freq = binFrequencyHz(bin, fftSize, sampleRateHz);
+    if (freq < lowHz || freq >= highHz) continue;
+    const magnitude = spectrum[bin];
+    if (magnitude <= 0) continue;
+    logFrequencies.push(Math.log2(freq));
+    magnitudesDb.push(20 * Math.log10(magnitude));
+  }
+
+  const n = logFrequencies.length;
+  if (n < 2) {
+    throw new Error("spectralSlopeDbPerOctave: la banda declarada no contiene suficientes bins");
+  }
+
+  const meanX = logFrequencies.reduce((a, b) => a + b, 0) / n;
+  const meanY = magnitudesDb.reduce((a, b) => a + b, 0) / n;
+
+  let covariance = 0;
+  let variance = 0;
+  for (let i = 0; i < n; i++) {
+    const dx = logFrequencies[i] - meanX;
+    covariance += dx * (magnitudesDb[i] - meanY);
+    variance += dx * dx;
+  }
+
+  return covariance / variance;
+}
