@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_CONFIG, readConfig, writeConfig } from "./config";
-import { PersistenceNoticeStore } from "./persistenceNotices";
+import { SystemNoticeStore } from "./systemNotices";
 
 function installFakeLocalStorage(): Map<string, string> {
   const store = new Map<string, string>();
@@ -18,7 +18,7 @@ describe("readConfig / writeConfig", () => {
   });
 
   it("devuelve los valores por defecto en el primer arranque, sin avisos", () => {
-    const notices = new PersistenceNoticeStore();
+    const notices = new SystemNoticeStore();
     expect(readConfig(notices)).toEqual(DEFAULT_CONFIG);
     expect(notices.getSnapshot()).toEqual([]);
   });
@@ -30,7 +30,7 @@ describe("readConfig / writeConfig", () => {
 
   it("ante datos corruptos, arranca con valores por defecto e informa una vez", () => {
     localStorage.setItem("dark-echo.config", "{no es json valido");
-    const notices = new PersistenceNoticeStore();
+    const notices = new SystemNoticeStore();
 
     expect(readConfig(notices)).toEqual(DEFAULT_CONFIG);
     expect(notices.getSnapshot()).toHaveLength(1);
@@ -43,7 +43,7 @@ describe("readConfig / writeConfig", () => {
         throw new Error("escritura denegada");
       },
     });
-    const notices = new PersistenceNoticeStore();
+    const notices = new SystemNoticeStore();
 
     writeConfig({ masterVolume: 0.5 }, notices);
     writeConfig({ masterVolume: 0.6 }, notices);

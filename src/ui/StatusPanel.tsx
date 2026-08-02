@@ -14,10 +14,13 @@ export function StatusPanel({ mixer }: { mixer: AmbientMixer }) {
   const { mix } = snapshot;
   const isPlaying = mix.kind === "playing";
   const isStopped = mix.kind === "stopped";
+  const isSuspended = mix.kind === "suspended";
 
   function handleToggle() {
     if (isPlaying) {
       mixer.stop();
+    } else if (isSuspended) {
+      void mixer.resumeSuspended();
     } else {
       void mixer.play();
     }
@@ -31,7 +34,7 @@ export function StatusPanel({ mixer }: { mixer: AmbientMixer }) {
         <p className="text-sm text-terminal-response">No hay reproducción en curso.</p>
       )}
 
-      {(isPlaying || isStopped) && (
+      {(isPlaying || isStopped || isSuspended) && (
         <ul className="space-y-1 text-sm text-terminal-response">
           {mix.layers.map((layer) => (
             <li key={layer.id} className="flex items-center justify-between gap-3">
@@ -48,12 +51,18 @@ export function StatusPanel({ mixer }: { mixer: AmbientMixer }) {
         </p>
       )}
 
+      {isSuspended && (
+        <p className="mt-2 text-xs text-terminal-response">
+          Suspendido por el sistema; "Reproducir" la reanuda.
+        </p>
+      )}
+
       <div className="mt-4 flex items-center gap-3">
         <Button
           type="button"
           size="sm"
           variant={isPlaying ? "secondary" : "default"}
-          disabled={!isPlaying && mix.kind === "empty"}
+          disabled={!isPlaying && !isSuspended && mix.kind === "empty"}
           onClick={handleToggle}
         >
           {isPlaying ? "Detener" : "Reproducir"}

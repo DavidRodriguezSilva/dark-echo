@@ -4,7 +4,7 @@ import { autocomplete } from "../commands/autocomplete";
 import { CommandHistory } from "../commands/commandHistory";
 import { executeCommand } from "../commands/executeCommand";
 import { readFromStorage, writeToStorage } from "../platform/storage";
-import type { PersistenceNoticeStore } from "../platform/persistenceNotices";
+import type { SystemNoticeStore } from "../platform/systemNotices";
 
 const HISTORY_KEY = "dark-echo.command-history";
 const HISTORY_VERSION = 1;
@@ -39,7 +39,7 @@ export function Console({
   notices,
 }: {
   registry: CommandRegistry;
-  notices: PersistenceNoticeStore;
+  notices: SystemNoticeStore;
 }) {
   const historyRef = useRef<CommandHistory | null>(null);
   if (!historyRef.current) {
@@ -61,9 +61,9 @@ export function Console({
     }
   }, [lines]);
 
-  // Avisos de persistencia (session-persistence, "Tolerancia a
-  // almacenamiento dañado o no disponible"): se muestran como una linea mas
-  // en cuanto aparecen, sin repetir los ya mostrados.
+  // Avisos del sistema (persistencia degradada, actualizaciones
+  // disponibles): se muestran como una linea mas en cuanto aparecen, sin
+  // repetir los ya mostrados.
   const pendingNotices = useSyncExternalStore(notices.subscribe, notices.getSnapshot);
   const shownNoticesRef = useRef(0);
   useEffect(() => {

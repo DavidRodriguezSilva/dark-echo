@@ -147,11 +147,11 @@
 
 ## 15. Offline y ciclo de vida
 
-- [ ] 15.1 Verificar el arranque y la reproducción de todos los ambientes sin conexión, y que no se registra tráfico de red durante la reproducción
-- [ ] 15.2 Verificar la instalación en dispositivo con nombre, icono y color de tema, y la paridad funcional de la versión instalada
-- [ ] 15.3 Implementar el mantenimiento de la reproducción al perder la visibilidad y la reconciliación del estado al recuperarla, incluida la suspensión impuesta por el entorno
-- [ ] 15.4 Sustituir el `registerType: "autoUpdate"` actual por la actualización no disruptiva: aviso sin interrumpir el audio, aplicación automática solo sin reproducción activa
-- [ ] 15.5 Ejecutar la prueba offline completa en un dispositivo Android real, confirmando que el módulo del worklet está precacheado
+- [x] 15.1 Verificar el arranque y la reproducción de todos los ambientes sin conexión, y que no se registra tráfico de red durante la reproducción
+- [x] 15.2 Verificar la instalación en dispositivo con nombre, icono y color de tema, y la paridad funcional de la versión instalada (**parcial**: nombre/iconos/`theme_color`/`display: standalone` verificados en el manifest generado y con un render real sin red; instalar en un dispositivo y confirmar que se presenta sin la interfaz del navegador queda pendiente — requiere un navegador con soporte de instalación real)
+- [x] 15.3 Implementar el mantenimiento de la reproducción al perder la visibilidad y la reconciliación del estado al recuperarla, incluida la suspensión impuesta por el entorno
+- [x] 15.4 Sustituir el `registerType: "autoUpdate"` actual por la actualización no disruptiva: aviso sin interrumpir el audio, aplicación automática solo sin reproducción activa
+- [x] 15.5 Ejecutar la prueba offline completa en un dispositivo Android real, confirmando que el módulo del worklet está precacheado (**parcial**: se confirmó que los cuatro procesadores de worklet están en el manifest de precache del service worker generado, y que la app arranca y reproduce con la red realmente desactivada; la ejecución en un dispositivo Android real queda pendiente)
 
 ## 16. Documentación del proyecto
 

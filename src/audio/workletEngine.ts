@@ -154,4 +154,19 @@ export class WorkletEngine {
   getMasterVolume(): number {
     return this.masterVolume;
   }
+
+  /** `"none"` cuando el contexto todavia no se creo (nunca sono nada). */
+  getContextState(): AudioContextState | "none" {
+    return this.context?.state ?? "none";
+  }
+
+  /**
+   * Reanuda el contexto si el entorno lo suspendio (offline-playback,
+   * "Suspension impuesta por el entorno"): reutiliza `ensureGraph`, que ya
+   * crea o reanuda el contexto segun haga falta. Es la unica accion que
+   * necesita el usuario para volver a oir la mezcla tras una suspension.
+   */
+  async resumeIfSuspended(): Promise<EngineResult> {
+    return this.ensureGraph();
+  }
 }

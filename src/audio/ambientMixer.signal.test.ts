@@ -1,6 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { AmbientMixer } from "./ambientMixer";
-import { resetAudioContextForTests } from "./context";
+import { getAudioContext, resetAudioContextForTests } from "./context";
+
+/** Simula el evento que dispara la reconciliacion (offline-playback, "Recuperacion de la visibilidad"). */
+function dispatchVisible(): void {
+  Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+  document.dispatchEvent(new Event("visibilitychange"));
+}
 
 /**
  * Verifica la semantica de mezcla de command-console ("Vocabulario de
@@ -182,6 +188,52 @@ describe("AmbientMixer — estado observable (design.md D7)", () => {
 
     await mixer.play("rain");
     expect(notifications).toBe(0);
+  });
+});
+
+describe("AmbientMixer — continuidad de visibilidad y suspension del entorno (offline-playback)", () => {
+  it("una suspension del contexto se refleja al recuperar la visibilidad", async () => {
+    const mixer = new AmbientMixer();
+    await mixer.play("rain");
+    expect(mixer.getSnapshot().mix.kind).toBe("playing");
+
+    const audioContext = await getAudioContext();
+    if (!audioContext.ok) throw new Error("no se pudo obtener el AudioContext de prueba");
+    await audioContext.context.suspend();
+
+    dispatchVisible();
+    expect(mixer.getSnapshot().mix.kind).toBe("suspended");
+    // Las capas siguen registradas: no se perdio la composicion, solo el sonido.
+    expect(mixer.activeLayerIds.length).toBeGreaterThan(0);
+  });
+
+  it("resumeSuspended reanuda el contexto y vuelve a 'playing'", async () => {
+    const mixer = new AmbientMixer();
+    await mixer.play("rain");
+
+    const audioContext = await getAudioContext();
+    if (!audioContext.ok) throw new Error("no se pudo obtener el AudioContext de prueba");
+    await audioContext.context.suspend();
+    dispatchVisible();
+    expect(mixer.getSnapshot().mix.kind).toBe("suspended");
+
+    const result = await mixer.resumeSuspended();
+    expect(result.ok).toBe(true);
+    expect(mixer.getSnapshot().mix.kind).toBe("playing");
+  });
+
+  it("'play' sin argumento tambien reanuda una mezcla suspendida (una sola accion)", async () => {
+    const mixer = new AmbientMixer();
+    await mixer.play("rain");
+
+    const audioContext = await getAudioContext();
+    if (!audioContext.ok) throw new Error("no se pudo obtener el AudioContext de prueba");
+    await audioContext.context.suspend();
+    dispatchVisible();
+
+    const result = await mixer.play();
+    expect(result.ok).toBe(true);
+    expect(mixer.getSnapshot().mix.kind).toBe("playing");
   });
 });
 

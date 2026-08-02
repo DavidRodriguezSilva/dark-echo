@@ -1,17 +1,18 @@
 /**
- * Avisos de persistencia (session-persistence, "Tolerancia a almacenamiento
- * dañado o no disponible"): un almacenamiento ausente, corrupto o de
- * escritura denegada MUST NOT impedir usar la aplicacion, pero el usuario
- * SHALL ser informado. Este store observable (design.md D7) es el canal —
- * la consola se suscribe y muestra cada aviso como una linea mas, igual que
- * cualquier otro mensaje del sistema.
+ * Avisos del sistema que no son respuesta directa a un comando: datos de
+ * almacenamiento ausentes, corruptos o de escritura denegada
+ * (session-persistence, "Tolerancia a almacenamiento dañado o no
+ * disponible") y actualizaciones disponibles (offline-playback,
+ * "Actualización no disruptiva"). Este store observable (design.md D7) es
+ * el canal — la consola se suscribe y muestra cada aviso como una linea
+ * mas, igual que cualquier otro mensaje del sistema.
  *
  * `pushOnce` evita repetir el mismo aviso en cada cambio: la escritura
  * denegada no cambia de una vez a la siguiente dentro de una misma sesion.
  */
 type Listener = () => void;
 
-export class PersistenceNoticeStore {
+export class SystemNoticeStore {
   private notices: string[] = [];
   private readonly listeners = new Set<Listener>();
   private readonly warnedKeys = new Set<string>();

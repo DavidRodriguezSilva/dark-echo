@@ -14,7 +14,12 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: "autoUpdate",
+      // "prompt", no "autoUpdate" (offline-playback, "Actualizacion no
+      // disruptiva"): autoUpdate reemplaza el service worker y recarga la
+      // pagina en cuanto detecta una version nueva, sin mirar si hay audio
+      // sonando. Con "prompt" la aplicacion decide cuando llamar a
+      // `updateSW()` — ver src/main.tsx y src/platform/update.ts.
+      registerType: "prompt",
       includeAssets: ["favicon.ico"],
       manifest: {
         name: "Dark Echo",

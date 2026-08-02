@@ -1,27 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { PersistenceNoticeStore } from "./persistenceNotices";
+import { SystemNoticeStore } from "./systemNotices";
 
-describe("PersistenceNoticeStore", () => {
+describe("SystemNoticeStore", () => {
   it("empieza vacio", () => {
-    expect(new PersistenceNoticeStore().getSnapshot()).toEqual([]);
+    expect(new SystemNoticeStore().getSnapshot()).toEqual([]);
   });
 
   it("acumula avisos en orden", () => {
-    const store = new PersistenceNoticeStore();
+    const store = new SystemNoticeStore();
     store.push("primero");
     store.push("segundo");
     expect(store.getSnapshot()).toEqual(["primero", "segundo"]);
   });
 
   it("pushOnce no repite el mismo aviso para la misma clave", () => {
-    const store = new PersistenceNoticeStore();
+    const store = new SystemNoticeStore();
     store.pushOnce("escritura-denegada", "no se pudo escribir");
     store.pushOnce("escritura-denegada", "no se pudo escribir de nuevo");
     expect(store.getSnapshot()).toEqual(["no se pudo escribir"]);
   });
 
   it("notifica a los suscriptores en cada push", () => {
-    const store = new PersistenceNoticeStore();
+    const store = new SystemNoticeStore();
     let notifications = 0;
     const unsubscribe = store.subscribe(() => notifications++);
 

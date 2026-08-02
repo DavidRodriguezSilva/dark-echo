@@ -1,6 +1,6 @@
 import { readVersioned, writeToStorage } from "./storage";
 import type { Scene } from "../domain/scene";
-import type { PersistenceNoticeStore } from "./persistenceNotices";
+import type { SystemNoticeStore } from "./systemNotices";
 
 /**
  * Escenas guardadas (session-persistence, "Gestion de escenas sonoras"): un
@@ -14,9 +14,9 @@ export type SceneSaveResult = { status: "saved"; overwritten: boolean } | { stat
 
 export class SceneStore {
   private scenes: Record<string, Scene>;
-  private readonly notices?: PersistenceNoticeStore;
+  private readonly notices?: SystemNoticeStore;
 
-  constructor(notices?: PersistenceNoticeStore) {
+  constructor(notices?: SystemNoticeStore) {
     this.notices = notices;
     const result = readVersioned<Record<string, Scene>>("dark-echo.scenes", 1);
     if (result.status === "ok" || result.status === "migrated") {

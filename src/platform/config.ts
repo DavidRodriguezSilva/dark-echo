@@ -1,5 +1,5 @@
 import { readVersioned, writeToStorage } from "./storage";
-import type { PersistenceNoticeStore } from "./persistenceNotices";
+import type { SystemNoticeStore } from "./systemNotices";
 
 /**
  * Configuracion del usuario (session-persistence, "Persistencia de la
@@ -23,7 +23,7 @@ export const DEFAULT_CONFIG: UserConfig = { masterVolume: 0.5 };
  * version no migrable) se informa una vez a traves de `notices`, y se
  * continua con los valores por defecto documentados en `DEFAULT_CONFIG`.
  */
-export function readConfig(notices?: PersistenceNoticeStore): UserConfig {
+export function readConfig(notices?: SystemNoticeStore): UserConfig {
   const result = readVersioned<UserConfig>(STORAGE_KEY, STORAGE_VERSION);
   if (result.status === "ok" || result.status === "migrated") return result.data;
 
@@ -33,7 +33,7 @@ export function readConfig(notices?: PersistenceNoticeStore): UserConfig {
   return DEFAULT_CONFIG;
 }
 
-export function writeConfig(config: UserConfig, notices?: PersistenceNoticeStore): void {
+export function writeConfig(config: UserConfig, notices?: SystemNoticeStore): void {
   const persisted = writeToStorage(STORAGE_KEY, STORAGE_VERSION, config);
   if (!persisted) {
     notices?.pushOnce(

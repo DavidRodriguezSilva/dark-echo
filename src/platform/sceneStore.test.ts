@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { SceneStore } from "./sceneStore";
-import { PersistenceNoticeStore } from "./persistenceNotices";
+import { SystemNoticeStore } from "./systemNotices";
 
 function installFakeLocalStorage(): Map<string, string> {
   const store = new Map<string, string>();
@@ -72,7 +72,7 @@ describe("SceneStore", () => {
 
   it("ante escenas guardadas corruptas, arranca sin escenas e informa una vez", () => {
     localStorage.setItem("dark-echo.scenes", "{no es json valido");
-    const notices = new PersistenceNoticeStore();
+    const notices = new SystemNoticeStore();
 
     const store = new SceneStore(notices);
     expect(store.list()).toEqual([]);
@@ -86,7 +86,7 @@ describe("SceneStore", () => {
         throw new Error("escritura denegada");
       },
     });
-    const notices = new PersistenceNoticeStore();
+    const notices = new SystemNoticeStore();
     const store = new SceneStore(notices);
 
     store.save("lluvia", { layers: { "rain.cuerpo": 0.5 } }, false);

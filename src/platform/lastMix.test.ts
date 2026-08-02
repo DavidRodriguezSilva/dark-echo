@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { readLastMix, writeLastMix } from "./lastMix";
-import { PersistenceNoticeStore } from "./persistenceNotices";
+import { SystemNoticeStore } from "./systemNotices";
 
 function installFakeLocalStorage(): Map<string, string> {
   const store = new Map<string, string>();
@@ -34,7 +34,7 @@ describe("readLastMix / writeLastMix", () => {
 
   it("ante datos corruptos, no hay mezcla que reanudar e informa una vez", () => {
     localStorage.setItem("dark-echo.last-mix", "{no es json valido");
-    const notices = new PersistenceNoticeStore();
+    const notices = new SystemNoticeStore();
 
     expect(readLastMix(notices)).toBeUndefined();
     expect(notices.getSnapshot()).toHaveLength(1);

@@ -6,19 +6,21 @@ import {
   createCommandRegistry,
   type AppearanceController,
   type SceneController,
+  type UpdateController,
 } from "../commands/commands";
-import { PersistenceNoticeStore } from "../platform/persistenceNotices";
+import { SystemNoticeStore } from "../platform/systemNotices";
 import { readConfig, writeConfig } from "../platform/config";
 import { readLastMix, writeLastMix } from "../platform/lastMix";
 import { SceneStore } from "../platform/sceneStore";
+import type { UpdateStore } from "../platform/update";
 import { Console } from "./Console";
 import { StatusPanel } from "./StatusPanel";
 import { ThemeSelector } from "./ThemeSelector";
 
-export function App() {
-  const noticesRef = useRef<PersistenceNoticeStore | null>(null);
+export function App({ updateStore }: { updateStore: UpdateStore }) {
+  const noticesRef = useRef<SystemNoticeStore | null>(null);
   if (!noticesRef.current) {
-    noticesRef.current = new PersistenceNoticeStore();
+    noticesRef.current = new SystemNoticeStore();
   }
   const notices = noticesRef.current;
 
@@ -87,10 +89,15 @@ export function App() {
           : { ok: false, message: `No existe la escena "${name}".` };
       },
     };
+    const updateController: UpdateController = {
+      isAvailable: () => updateStore.getSnapshot(),
+      apply: () => updateStore.apply(),
+    };
     registryRef.current = createCommandRegistry(
       mixerRef.current,
       appearanceController,
-      sceneController
+      sceneController,
+      updateController
     );
   }
 
@@ -108,6 +115,25 @@ export function App() {
     };
     return mixer.subscribe(persist);
   }, [notices]);
+
+  // Actualizacion no disruptiva (offline-playback): la decision se toma en
+  // el instante en que se detecta la version nueva, mirando si hay alguna
+  // capa activa en ese momento. Sin nada sonando, se aplica sola; con algo
+  // sonando, se avisa y queda a decision del usuario (comando `update`) —
+  // no se reintenta automáticamente mas tarde, para no sorprender con una
+  // recarga tras algo que el usuario puso a sonar despues del aviso.
+  useEffect(() => {
+    return updateStore.subscribe(() => {
+      if (!updateStore.getSnapshot()) return;
+
+      const mix = mixerRef.current!.getSnapshot().mix;
+      if (mix.kind === "empty") {
+        updateStore.apply();
+        return;
+      }
+      notices.push('Hay una actualización disponible. Ejecuta "update" para aplicarla.');
+    });
+  }, [updateStore, notices]);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">

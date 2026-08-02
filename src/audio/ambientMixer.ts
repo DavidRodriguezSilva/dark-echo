@@ -28,12 +28,15 @@ export interface LayerSnapshot {
 /**
  * Estado de reposo explicito (command-console, "Panel de estado del
  * sistema"): distingue "nunca hubo nada" de "detenido, listo para reanudar"
- * de "sonando".
+ * de "sonando" de "suspendido por el entorno" (offline-playback, "Suspension
+ * impuesta por el entorno") — capas activas cuyo contexto de audio esta
+ * suspendido no estan sonando, aunque siguen registradas.
  */
 export type MixSnapshot =
   | { kind: "empty" }
   | { kind: "stopped"; layers: LayerSnapshot[] }
-  | { kind: "playing"; layers: LayerSnapshot[] };
+  | { kind: "playing"; layers: LayerSnapshot[] }
+  | { kind: "suspended"; layers: LayerSnapshot[] };
 
 export interface PlaybackSnapshot {
   mix: MixSnapshot;
@@ -67,7 +70,23 @@ export class AmbientMixer {
       this.conservedComposition = new Map(Object.entries(initial.composition));
     }
     this.publish();
+
+    // Al recuperar la visibilidad, el estado mostrado debe coincidir con lo
+    // que realmente suena (offline-playback, "Recuperacion de la
+    // visibilidad"): esto no cambia nada por si solo, solo vuelve a publicar
+    // por si el entorno suspendio el contexto mientras la pagina no era
+    // visible. Perder la visibilidad MUST NOT detener nada por decision
+    // propia, así que no hay handler para ese lado del evento.
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", this.handleVisibilityChange);
+    }
   }
+
+  private handleVisibilityChange = (): void => {
+    if (document.visibilityState === "visible") {
+      this.publish();
+    }
+  };
 
   private layerId(ambientId: string, layerKey: string): string {
     return `${ambientId}.${layerKey}`;
@@ -102,7 +121,7 @@ export class AmbientMixer {
     const layers = this.currentLayers();
     const mix: MixSnapshot =
       layers.length > 0
-        ? { kind: "playing", layers }
+        ? { kind: this.engine.getContextState() === "suspended" ? "suspended" : "playing", layers }
         : this.conservedComposition
           ? {
               kind: "stopped",
@@ -153,6 +172,9 @@ export class AmbientMixer {
 
   async play(ambientId?: string): Promise<MixerResult> {
     if (!ambientId) {
+      if (this.engine.activeLayerIds.length > 0 && this.engine.getContextState() === "suspended") {
+        return this.resumeSuspended();
+      }
       return this.resume();
     }
 
@@ -239,6 +261,19 @@ export class AmbientMixer {
     }
 
     this.conservedComposition = null;
+    this.publish();
+    return { ok: true, message: "Reproducción reanudada." };
+  }
+
+  /**
+   * La unica accion que hace falta para reanudar tras una suspension
+   * impuesta por el entorno (offline-playback, "Suspension impuesta por el
+   * entorno"): las capas siguen registradas, solo el contexto necesita
+   * reanudarse. `play()` sin argumento la invoca automaticamente.
+   */
+  async resumeSuspended(): Promise<MixerResult> {
+    const result = await this.engine.resumeIfSuspended();
+    if (!result.ok) return { ok: false, message: result.reason };
     this.publish();
     return { ok: true, message: "Reproducción reanudada." };
   }
@@ -340,6 +375,9 @@ export class AmbientMixer {
     const { mix } = this.snapshot;
     if (mix.kind === "playing") {
       return `Sonando: ${mix.layers.map((l) => l.id).join(", ")}`;
+    }
+    if (mix.kind === "suspended") {
+      return `Suspendido por el sistema: ${mix.layers.map((l) => l.id).join(", ")}. "play" la reanuda.`;
     }
     if (mix.kind === "stopped") {
       return `Detenido. Mezcla conservada: ${mix.layers.map((l) => l.id).join(", ")}`;

@@ -1,6 +1,6 @@
 import { readVersioned, writeToStorage } from "./storage";
 import type { Scene } from "../domain/scene";
-import type { PersistenceNoticeStore } from "./persistenceNotices";
+import type { SystemNoticeStore } from "./systemNotices";
 
 /**
  * Recuerdo de la ultima mezcla (session-persistence, "Restauracion de la
@@ -13,7 +13,7 @@ import type { PersistenceNoticeStore } from "./persistenceNotices";
 const STORAGE_KEY = "dark-echo.last-mix";
 const STORAGE_VERSION = 1;
 
-export function readLastMix(notices?: PersistenceNoticeStore): Scene | undefined {
+export function readLastMix(notices?: SystemNoticeStore): Scene | undefined {
   const result = readVersioned<Scene | null>(STORAGE_KEY, STORAGE_VERSION);
   if (result.status === "ok" || result.status === "migrated") return result.data ?? undefined;
 
@@ -24,7 +24,7 @@ export function readLastMix(notices?: PersistenceNoticeStore): Scene | undefined
 }
 
 /** `null` borra el recuerdo (p. ej. tras un `reset` explicito). */
-export function writeLastMix(mix: Scene | null, notices?: PersistenceNoticeStore): void {
+export function writeLastMix(mix: Scene | null, notices?: SystemNoticeStore): void {
   const persisted = writeToStorage(STORAGE_KEY, STORAGE_VERSION, mix);
   if (!persisted) {
     notices?.pushOnce(

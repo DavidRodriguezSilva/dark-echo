@@ -33,16 +33,28 @@ export interface SceneController {
 }
 
 /**
+ * Lo que el comando `update` necesita de la actualizacion de la aplicacion
+ * (offline-playback, "Actualizacion no disruptiva"), inyectado por ui/
+ * igual que los demas controladores.
+ */
+export interface UpdateController {
+  isAvailable(): boolean;
+  apply(): void;
+}
+
+/**
  * Construye el registro de comandos con sus handlers reales, sobre un
  * `AmbientMixer` (command-console, "Vocabulario de comandos y semantica de
  * la mezcla"), un `AppearanceController` (theming, "Selección de tema en
- * caliente") y un `SceneController` (session-persistence, "Gestion de
- * escenas sonoras").
+ * caliente"), un `SceneController` (session-persistence, "Gestion de
+ * escenas sonoras") y un `UpdateController` (offline-playback,
+ * "Actualizacion no disruptiva").
  */
 export function createCommandRegistry(
   mixer: AmbientMixer,
   appearance: AppearanceController,
-  scenes: SceneController
+  scenes: SceneController,
+  update: UpdateController
 ): CommandRegistry {
   const registry = new CommandRegistry();
   const ambientIds = listAmbients().map((a) => a.id);
@@ -206,6 +218,19 @@ export function createCommandRegistry(
         }
 
         return fromMixerResult(scenes.remove(nombre));
+      },
+    },
+    {
+      name: "update",
+      aliases: [],
+      description: "Aplica la actualización pendiente de la aplicación, si hay alguna disponible.",
+      forms: [{ args: [] }],
+      handler: () => {
+        if (!update.isAvailable()) {
+          return { kind: "response", message: "No hay ninguna actualización pendiente." };
+        }
+        update.apply();
+        return { kind: "response", message: "Aplicando actualización…" };
       },
     },
     {
