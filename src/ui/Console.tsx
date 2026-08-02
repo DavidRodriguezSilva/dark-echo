@@ -18,14 +18,9 @@ interface OutputLine {
 }
 
 const WELCOME_LINES: OutputLine[] = [
-  "play rain",
-  "play wind",
-  "play river",
-  "play ocean",
-  "add <ambiente>",
-  "stop",
-  "volume 0.5",
-  "help",
+  "dark-echo genera ambientes sonoros procedurales —lluvia, viento, río y mar— completamente offline, sin grabaciones.",
+  "Todo se controla escribiendo comandos, como en una terminal.",
+  'Escribí "help" para ver la lista completa, o "help <comando>" para el detalle de uno.',
 ].map((text) => ({ kind: "response", text }));
 
 function lineClassName(kind: OutputLine["kind"]): string {
@@ -134,11 +129,11 @@ export function Console({
   }
 
   return (
-    <section className="rounded-lg border border-border bg-panel p-5 shadow-sm">
+    <section className="flex min-h-0 flex-1 flex-col">
       <div
         ref={outputRef}
         onScroll={handleScroll}
-        className="h-[300px] space-y-1 overflow-y-auto font-mono text-sm whitespace-pre-wrap"
+        className="flex-1 space-y-1 overflow-y-auto px-4 py-3 font-mono text-sm whitespace-pre-wrap"
       >
         {lines.map((line, index) => (
           <p key={index} className={lineClassName(line.kind)}>
@@ -148,10 +143,15 @@ export function Console({
       </div>
 
       {suggestions.length > 0 && (
-        <p className="mt-2 truncate text-xs text-terminal-response">{suggestions.join("  ")}</p>
+        <p className="truncate px-4 pb-1 text-xs text-terminal-response">
+          {suggestions.join("  ")}
+        </p>
       )}
 
-      <form onSubmit={handleSubmit} className="mt-4 flex items-center gap-2">
+      <form
+        onSubmit={handleSubmit}
+        className="flex items-center gap-2 border-t border-border px-4 py-2"
+      >
         <span
           aria-hidden="true"
           className="animate-pulse text-terminal-cursor motion-reduce:animate-none"
@@ -164,7 +164,7 @@ export function Console({
           onKeyDown={handleKeyDown}
           placeholder="Escriba un comando..."
           autoFocus
-          className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-sm text-foreground outline-none focus:ring-2 focus:ring-ring"
+          className="w-full bg-transparent font-mono text-sm text-foreground outline-none"
         />
       </form>
     </section>

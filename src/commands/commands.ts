@@ -15,8 +15,8 @@ function fromMixerResult(result: { ok: boolean; message: string }): CommandResul
  */
 export interface AppearanceController {
   list(): { id: string; label: string }[];
-  getCurrent(): { themeId: string; scheme: "dark" | "light" };
-  set(preference: { themeId: string; scheme: "dark" | "light" }): void;
+  getCurrent(): { themeId: string; scheme: "dark" | "light" | "auto" };
+  set(preference: { themeId: string; scheme: "dark" | "light" | "auto" }): void;
 }
 
 /**
@@ -167,12 +167,16 @@ export function createCommandRegistry(
     {
       name: "scheme",
       aliases: [],
-      description: "Selecciona el esquema claro u oscuro.",
-      forms: [{ args: [{ name: "esquema", type: "enum", values: ["dark", "light"] }] }],
+      description: 'Selecciona el esquema claro u oscuro, o "auto" para seguir el del sistema.',
+      forms: [{ args: [{ name: "esquema", type: "enum", values: ["dark", "light", "auto"] }] }],
       handler: (args) => {
         const current = appearance.getCurrent();
-        appearance.set({ themeId: current.themeId, scheme: args.esquema as "dark" | "light" });
-        return { kind: "response", message: `Esquema: ${args.esquema}` };
+        const esquema = args.esquema as "dark" | "light" | "auto";
+        appearance.set({ themeId: current.themeId, scheme: esquema });
+        return {
+          kind: "response",
+          message: esquema === "auto" ? "Esquema: auto (sigue al sistema)." : `Esquema: ${esquema}`,
+        };
       },
     },
     {

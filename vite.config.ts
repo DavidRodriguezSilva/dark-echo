@@ -20,7 +20,7 @@ export default defineConfig({
       // sonando. Con "prompt" la aplicacion decide cuando llamar a
       // `updateSW()` — ver src/main.tsx y src/platform/update.ts.
       registerType: "prompt",
-      includeAssets: ["favicon.ico"],
+      includeAssets: ["favicon.svg"],
       manifest: {
         name: "Dark Echo",
         short_name: "dark-echo",

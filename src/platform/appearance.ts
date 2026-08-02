@@ -12,6 +12,11 @@ import { listThemes, type Scheme } from "../domain/themes";
  * módulo — depende de un script sincrono en `index.html`, que usa a mano
  * la misma clave y el mismo formato (ver el comentario allí) porque no
  * puede esperar a que el grafo de módulos cargue.
+ *
+ * El esquema guardado puede ser `"auto"`: sigue en vivo la preferencia del
+ * sistema operativo hasta que el usuario fija `"dark"`/`"light"`
+ * explícitamente. `getSnapshot` devuelve la preferencia cruda (puede ser
+ * `"auto"`); `getEffectiveScheme` es la que hay que aplicar al DOM.
  */
 
 const STORAGE_KEY = "dark-echo.appearance";
@@ -22,22 +27,27 @@ export interface AppearancePreference {
   scheme: Scheme;
 }
 
+type EffectiveScheme = "dark" | "light";
 type Listener = () => void;
 
-export function getSystemScheme(): Scheme {
+export function getSystemScheme(): EffectiveScheme {
   return typeof matchMedia !== "undefined" && matchMedia("(prefers-color-scheme: dark)").matches
     ? "dark"
     : "light";
+}
+
+function resolveScheme(scheme: Scheme): EffectiveScheme {
+  return scheme === "auto" ? getSystemScheme() : scheme;
 }
 
 function readInitialPreference(): AppearancePreference {
   const persisted = readFromStorage<AppearancePreference>(STORAGE_KEY, STORAGE_VERSION);
   if (persisted) return persisted;
 
-  // Sin preferencia registrada: adopta la del sistema operativo (theming,
-  // "Primer arranque sin preferencia registrada"). El tema por defecto es
-  // el primero declarado en el registro.
-  return { themeId: listThemes()[0].id, scheme: getSystemScheme() };
+  // Sin preferencia registrada: sigue la del sistema operativo en vivo
+  // (theming, "Primer arranque sin preferencia registrada"). El tema por
+  // defecto es el primero declarado en el registro.
+  return { themeId: listThemes()[0].id, scheme: "auto" };
 }
 
 export class AppearanceStore {
@@ -47,12 +57,23 @@ export class AppearanceStore {
   constructor() {
     this.preference = readInitialPreference();
     this.applyToDom();
+
+    // Sigue el esquema del sistema en vivo mientras la preferencia sea
+    // "auto" — no solo en el primer arranque. Si el usuario ya fijó
+    // "dark"/"light", el cambio se ignora.
+    if (typeof matchMedia !== "undefined") {
+      matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+        if (this.preference.scheme !== "auto") return;
+        this.applyToDom();
+        for (const listener of this.listeners) listener();
+      });
+    }
   }
 
   private applyToDom(): void {
     const root = document.documentElement;
     root.dataset.theme = this.preference.themeId;
-    root.classList.toggle("light", this.preference.scheme === "light");
+    root.classList.toggle("light", resolveScheme(this.preference.scheme) === "light");
   }
 
   subscribe = (listener: Listener): (() => void) => {
@@ -61,6 +82,9 @@ export class AppearanceStore {
   };
 
   getSnapshot = (): AppearancePreference => this.preference;
+
+  /** El esquema realmente aplicado — resuelve `"auto"` contra el sistema. */
+  getEffectiveScheme = (): EffectiveScheme => resolveScheme(this.preference.scheme);
 
   set(preference: AppearancePreference): void {
     this.preference = preference;

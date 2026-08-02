@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AmbientMixer } from "../audio/ambientMixer";
 import { AppearanceStore } from "../platform/appearance";
 import { listThemes } from "../domain/themes";
@@ -13,11 +13,14 @@ import { readConfig, writeConfig } from "../platform/config";
 import { readLastMix, writeLastMix } from "../platform/lastMix";
 import { SceneStore } from "../platform/sceneStore";
 import type { UpdateStore } from "../platform/update";
+import { BootSplash } from "./BootSplash";
 import { Console } from "./Console";
-import { StatusPanel } from "./StatusPanel";
-import { ThemeSelector } from "./ThemeSelector";
+import { StatusBar } from "./StatusBar";
+import { TouchControls } from "./TouchControls";
 
 export function App({ updateStore }: { updateStore: UpdateStore }) {
+  const [booted, setBooted] = useState(false);
+  const [controlsVisible, setControlsVisible] = useState(false);
   const noticesRef = useRef<SystemNoticeStore | null>(null);
   if (!noticesRef.current) {
     noticesRef.current = new SystemNoticeStore();
@@ -135,13 +138,22 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     });
   }, [updateStore, notices]);
 
-  return (
-    <main className="mx-auto max-w-3xl px-6 py-10">
-      <h1 className="mb-6 text-lg font-semibold text-foreground">dark-echo</h1>
+  if (!booted) {
+    return <BootSplash onDone={() => setBooted(true)} />;
+  }
 
+  return (
+    <main className="flex h-dvh w-full flex-col">
       <Console registry={registryRef.current} notices={notices} />
-      <StatusPanel mixer={mixerRef.current} />
-      <ThemeSelector store={appearanceRef.current} />
+      {controlsVisible && (
+        <TouchControls mixer={mixerRef.current} appearance={appearanceRef.current} />
+      )}
+      <StatusBar
+        mixer={mixerRef.current}
+        appearance={appearanceRef.current}
+        controlsVisible={controlsVisible}
+        onToggleControls={() => setControlsVisible((visible) => !visible)}
+      />
     </main>
   );
 }

@@ -3,7 +3,29 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#111111" />
+    <meta
+      name="description"
+      content="dark-echo genera ambientes sonoros procedurales y offline —lluvia, viento, río y mar— controlados desde una consola de comandos."
+    />
+    <meta property="og:title" content="dark-echo" />
+    <meta
+      property="og:description"
+      content="Ambientes sonoros procedurales y offline, controlados desde una consola de comandos."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/pwa-512x512.png" />
+    <meta property="og:locale" content="es" />
+    <meta property="og:site_name" content="dark-echo" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="dark-echo" />
+    <meta
+      name="twitter:description"
+      content="Ambientes sonoros procedurales y offline, controlados desde una consola de comandos."
+    />
+    <meta name="twitter:image" content="/pwa-512x512.png" />
     <title>dark-echo</title>
     <!--
       Aplica tema y esquema antes del primer dibujado (theming, tarea 13.6):
@@ -12,6 +34,11 @@
       corregirlo. Este script clasico y sincrono corre inline, sin esperar.
       Usa a mano la misma clave y formato que platform/appearance.ts porque
       no puede esperar a que el grafo de modulos cargue para importarlo.
+
+      El esquema guardado puede ser "auto": no es un valor literal a aplicar,
+      hay que resolverlo contra el sistema igual que
+      platform/appearance.ts#resolveScheme. Sin eso, alguien en "auto" con el
+      sistema en claro veria un flash de oscuro antes de que React monte.
     -->
     <script>
       (function () {
@@ -19,9 +46,13 @@
           var raw = localStorage.getItem("dark-echo.appearance");
           var envelope = raw ? JSON.parse(raw) : null;
           var preference = envelope && envelope.version === 1 ? envelope.data : null;
+          var storedScheme = preference && preference.scheme;
           var scheme =
-            (preference && preference.scheme) ||
-            (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            storedScheme && storedScheme !== "auto"
+              ? storedScheme
+              : matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
           var themeId = (preference && preference.themeId) || "default";
 
           document.documentElement.dataset.theme = themeId;

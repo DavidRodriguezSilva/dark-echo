@@ -17,7 +17,7 @@ const THEMES: ThemeDeclaration[] = [
   { id: "ambar", label: "Ámbar" },
 ];
 
-export type Scheme = "dark" | "light";
+export type Scheme = "dark" | "light" | "auto";
 
 export function listThemes(): ThemeDeclaration[] {
   return THEMES;
