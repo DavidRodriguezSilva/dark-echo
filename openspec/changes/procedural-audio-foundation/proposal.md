@@ -58,6 +58,13 @@ Antes de construir el catálogo completo de ambientes, presets, ecualizador y te
 - Se añaden tests de **señal** que verifican los criterios de aceptación: perfil espectral y ausencia de periodicidad de cada ambiente, ejecutados sobre render offline sin necesidad de reproducir en tiempo real.
 - Se añaden verificaciones automatizadas sobre los **tokens de apariencia**: contraste AA de cada tema en ambos esquemas, y ausencia de valores literales de color, radio o sombra en los componentes.
 
+**Refinamiento del catálogo** (añadido tras instalar la app y probarla en uso real, antes del cierre de este change)
+
+- Se añaden **ruido blanco, rosa y marrón** como ambientes independientes del catálogo principal, con su propio modelo `ruido-de-color` en la referencia de síntesis — no estaban contemplados en la lista original de este change ni en la de "fuera de alcance".
+- Se **corrigen** `rain`, `ocean` y `river`: tres defectos de fidelidad detectados por escucha (un tono tipo disparo/láser en la lluvia, oleaje poco reconocible y un estallido genérico en el mar, y un río que sonaba a viento más océano) contra el requisito ya aprobado de que cada ambiente sea "reconocible como el fenómeno natural que representa".
+- Se **retira** el motor legado sobre `ScriptProcessorNode` (tarea 10.7), sin esperar a que la validación perceptual completa (10.5) concluyera: mantener dos motores en paralelo sin ninguna referencia viva al antiguo solo generaba riesgo de mantenimiento.
+- Se documenta la **hoja de ruta del catálogo completo** (`docs/ambient-catalog-roadmap.md`), para decidir con dirección qué ambiente construir después en vez de ampliar el catálogo sin un orden acordado.
+
 **Fuera de alcance de este change** (changes posteriores, ya contemplados por la arquitectura):
 
 - Los ambientes restantes (tormentas, bosques, fogatas, urbano, cafeterías, bibliotecas, concentración/relajación).

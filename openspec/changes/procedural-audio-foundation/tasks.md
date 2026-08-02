@@ -162,8 +162,25 @@
 - [x] 16.5 Reformular en el `readme.md` el principio de mínimas dependencias como aplicable al núcleo de audio, explicando la decisión de D12
 - [x] 16.6 Consultar al propietario del proyecto la licencia y sustituir el «pendiente de definir»
 
-## 17. Cierre
+## 17. Refinamiento del catálogo de sonidos
 
-- [ ] 17.1 Verificar cada escenario de las siete especificaciones de este change y registrar los que requieren verificación manual
-- [ ] 17.2 Dejar CI en verde con typecheck, lint, tests de Node, tests de señal, contraste de temas y ausencia de valores literales
-- [ ] 17.3 Ejecutar `openspec validate procedural-audio-foundation --strict` y resolver lo que reporte
+Añadido tras probar la app instalada: antes de ampliar el catálogo, se
+consolida su base y se corrigen tres ambientes que no sonaban fieles al
+fenómeno que representan.
+
+- [x] 17.1 Añadir ruido blanco, rosa y marrón como ambientes independientes del catálogo principal: `PinkNoise` en `dsp/noise.ts`, `NoiseColor` extendido, tres declaraciones de una sola capa sin filtro que recorte banda ni modulación
+- [x] 17.2 Documentar el modelo `ruido-de-color` en `docs/synthesis-reference.md` (PSD 1/f^α) con su propio criterio de aceptación por pendiente espectral en dB/octava, y helper `spectralSlopeDbPerOctave` en `testing/fft.ts`
+- [x] 17.3 Cubrir los tres ambientes de ruido de color con tests de señal sobre el render real (pendiente espectral, ausencia de periodicidad, compatibilidad mono)
+- [x] 17.4 Actualizar la especificación de `procedural-ambiences` ("Ambientes disponibles en esta entrega") con los tres ids nuevos y su escenario de reconocibilidad
+- [x] 17.5 Corregir `rain`: el impacto/burbuja al 50/50 en la capa `impactos` (40 disparos/s) se percibía como un disparo o láser; nuevo parámetro `bubbleMix` por capa, documentado en `impacto-gota`, verificado con test unitario que aísla impacto y burbuja
+- [x] 17.6 Corregir `ocean`: filtro pasa-banda para el estallido de `rompiente` (antes ruido blanco sin filtrar, pese a que el modelo `oleaje` ya declaraba su centro de banda) y contraste de oleaje profundizado (gain 0.3→0.12); cota inferior nueva en el test de periodicidad al periodo de ola para que una futura regresión no lo aplane en silencio
+- [x] 17.7 Corregir `river`: nueva capa de cuerpo grave (ruido marrón pasa-bajos) que antes faltaba por completo, periodo de variación de caudal acortado (20 s → 10 s, dentro del rango declarado) y densidad de burbujeo subida al tope del rango declarado
+- [x] 17.8 Retirar el motor legado sobre `ScriptProcessorNode` (`audio/engine.ts`, `audio/sounds/*`, `domain/types.ts`): sin referencias vivas fuera de sí mismo, mantenerlo en paralelo solo generaba riesgo de mantenimiento (instrucción directa del propietario del proyecto)
+- [x] 17.9 Escribir la hoja de ruta del catálogo completo (`docs/ambient-catalog-roadmap.md`): ambientes implementados y planeados, con su modelo de síntesis cuando ya existe
+- [ ] 17.10 Validación perceptual de los tres defectos corregidos (rain/ocean/river) en dispositivo real (**pendiente**: requiere escucha humana — los tests de señal verifican los criterios medibles, no la percepción de "ya no suena a láser/antorcha/viento")
+
+## 18. Cierre
+
+- [ ] 18.1 Verificar cada escenario de las siete especificaciones de este change y registrar los que requieren verificación manual
+- [ ] 18.2 Dejar CI en verde con typecheck, lint, tests de Node, tests de señal, contraste de temas y ausencia de valores literales
+- [ ] 18.3 Ejecutar `openspec validate procedural-audio-foundation --strict` y resolver lo que reporte
