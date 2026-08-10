@@ -26,6 +26,8 @@ export const ventanaVidrio: OcclusionDeclaration = {
   model: "transmision-masa",
   densityKgPerCubicMeter: 2500,
   thicknessMeters: 0.004,
+  // Una ventana es el hueco de la fachada: construccion ligera por definicion.
+  flankingFloorDb: -12,
   requiredSurfaces: ["abertura"],
   affinityTraits: ["construido", "urbano", "rustico"],
   resonance: {
@@ -44,10 +46,10 @@ export const ventanaVidrio: OcclusionDeclaration = {
       lossFactor: 0.03,
     },
     modalBandHz: [40, 600],
-    modeCount: 4,
+    modeCount: 8,
     // Mas bajo que el del techo: la lluvia incide de refilon sobre un plano
     // vertical, no perpendicular como sobre una cubierta, asi que la excita
     // bastante menos aunque el vidrio resuene con mas facilidad.
-    mix: 0.25,
+    mix: 0.025,
   },
 };

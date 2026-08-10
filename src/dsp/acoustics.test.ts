@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  plateBendingFactor,
+  FLANKING_FLOOR_DB,
+  MASS_LAW_VALIDITY_FLOOR_HZ,
+  massLawResponse,
   airAbsorptionCutoffHz,
   distanceGain,
   massLawCutoffHz,
@@ -102,13 +106,13 @@ describe("plateModes", () => {
     youngsModulusPa: 8e9,
     densityKgPerCubicMeter: 500,
     poissonRatio: 0.3,
-    lossFactor: 0.02,
+    lossFactor: 0.08,
   };
   const vidrio = {
     youngsModulusPa: 70e9,
     densityKgPerCubicMeter: 2500,
     poissonRatio: 0.22,
-    lossFactor: 0.002,
+    lossFactor: 0.03,
   };
 
   it("devuelve modos ordenados por frecuencia, dentro del rango audible", () => {
@@ -133,7 +137,7 @@ describe("plateModes", () => {
     expect(modes[0].frequencyHz).toBeLessThan(200);
   });
 
-  it("el vidrio se sostiene mucho mas que la madera: Q diez veces mayor", () => {
+  it("el vidrio se sostiene mas que la madera, con el factor de perdida instalado", () => {
     const madera = plateModes({ spanXMeters: 3, spanYMeters: 0.6, thicknessMeters: 0.02 }, pino, 4);
     const cristal = plateModes(
       { spanXMeters: 1.2, spanYMeters: 0.8, thicknessMeters: 0.004 },
@@ -141,11 +145,13 @@ describe("plateModes", () => {
       4
     );
 
-    // Q = 1/eta, acotado por implementacion a [10, 120]: madera 1/0.02 = 50,
-    // vidrio 1/0.002 = 500 -> recortado a 120.
-    expect(madera[0].q).toBeCloseTo(50, 6);
-    expect(cristal[0].q).toBeCloseTo(120, 6);
-    expect(cristal[0].q).toBeGreaterThan(madera[0].q * 2);
+    // Q = 1/eta sobre el factor de perdida TOTAL de la placa instalada, no el
+    // del material: madera montada 1/0.08 = 12.5, vidrio enmarcado 1/0.03 =
+    // 33.3 -> acotado por implementacion a [4, 20].
+    expect(madera[0].q).toBeCloseTo(12.5, 6);
+    expect(cristal[0].q).toBeCloseTo(20, 6);
+    // Sigue sosteniendose mas que la madera, que es la diferencia audible.
+    expect(cristal[0].q).toBeGreaterThan(madera[0].q);
   });
 
   it("una placa mas gruesa del mismo material sube sus frecuencias modales", () => {
@@ -180,5 +186,108 @@ describe("airAbsorptionCutoffHz", () => {
   it("el corte cae con la raiz de la distancia", () => {
     // f = 1000 * sqrt(budget / (0.0025 * d)) -> cuadruplicar d divide f por 2
     expect(airAbsorptionCutoffHz(10) / airAbsorptionCutoffHz(40)).toBeCloseTo(2, 6);
+  });
+});
+
+describe("massLawResponse — ley de masas acotada a su region de validez", () => {
+  it("nunca amplifica, por ligera que sea la barrera", () => {
+    for (const mass of [0.5, 1, 5, 10, 20, 200]) {
+      const response = massLawResponse(mass);
+      expect(response.gain).toBeLessThanOrEqual(1);
+      expect(response.flankingGain).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("reproduce la ley de masas exactamente en el suelo de validez", () => {
+    const mass = 10;
+    const response = massLawResponse(mass);
+    const expected = Math.pow(
+      10,
+      -massLawTransmissionLossDb(mass, MASS_LAW_VALIDITY_FLOOR_HZ) / 20
+    );
+    expect(response.gain).toBeCloseTo(expected, 10);
+  });
+
+  it("una barrera del doble de masa transmite 6 dB menos", () => {
+    const delgada = massLawResponse(10);
+    const gruesa = massLawResponse(20);
+    const differenceDb = 20 * Math.log10(gruesa.gain / delgada.gain);
+    expect(differenceDb).toBeCloseTo(-6.0206, 3);
+  });
+
+  it("el camino indirecto pone un suelo al aislamiento, plano en frecuencia", () => {
+    // Por muy pesada que sea la barrera, el flanking no baja del suelo
+    // declarado: es lo que impide que la escena tienda al silencio en agudos.
+    const muroPesado = massLawResponse(500);
+    expect(20 * Math.log10(muroPesado.flankingGain)).toBeCloseTo(FLANKING_FLOOR_DB, 6);
+  });
+
+  it("el flanking es un suelo, no un tope: domina justo cuando la barrera aisla bien", () => {
+    // Un muro pesado transmite por si mismo mucho menos que el suelo de
+    // flanking, asi que es el flanking el que fija el aislamiento efectivo.
+    // Implementarlo como `min` (un tope) lo habria desactivado precisamente
+    // en el caso donde el fenomeno importa.
+    const muroPesado = massLawResponse(500);
+    expect(muroPesado.flankingGain).toBeGreaterThan(muroPesado.gain);
+
+    // En una barrera ligera pasa lo contrario y el directo manda.
+    const laminaLigera = massLawResponse(2);
+    expect(laminaLigera.gain).toBeGreaterThan(laminaLigera.flankingGain);
+  });
+});
+
+describe("plateModes — reparto por la banda declarada", () => {
+  const pino = {
+    youngsModulusPa: 8e9,
+    densityKgPerCubicMeter: 500,
+    poissonRatio: 0.3,
+    lossFactor: 0.08,
+  };
+
+  it("los modos se reparten por la banda, no se amontonan en el arranque de la serie", () => {
+    const geometry = { spanXMeters: 3, spanYMeters: 0.6, thicknessMeters: 0.02 };
+    const modes = plateModes(geometry, pino, 4, [40, 600]);
+
+    expect(modes.length).toBeGreaterThan(1);
+    // El defecto original: los N modos mas graves de este pano caben en menos
+    // de una octava y, excitados sin pausa, zumban como uno solo. Repartidos,
+    // el banco cubre mas de una octava de la banda declarada.
+    const octavas = Math.log2(modes[modes.length - 1].frequencyHz / modes[0].frequencyHz);
+    expect(octavas).toBeGreaterThan(1);
+  });
+
+  it("respeta la banda declarada", () => {
+    const geometry = { spanXMeters: 3, spanYMeters: 0.6, thicknessMeters: 0.02 };
+    const modes = plateModes(geometry, pino, 4, [40, 600]);
+
+    for (const mode of modes) {
+      expect(mode.frequencyHz).toBeGreaterThanOrEqual(40);
+      expect(mode.frequencyHz).toBeLessThanOrEqual(600);
+    }
+  });
+
+  it("no inventa frecuencias: cada modo devuelto es un modo real de la placa", () => {
+    const geometry = { spanXMeters: 3, spanYMeters: 0.6, thicknessMeters: 0.02 };
+    const modes = plateModes(geometry, pino, 4, [40, 600]);
+    const bending = plateBendingFactor(
+      pino.youngsModulusPa,
+      pino.densityKgPerCubicMeter,
+      pino.poissonRatio,
+      geometry.thicknessMeters
+    );
+
+    for (const mode of modes) {
+      let found = false;
+      for (let m = 1; m <= 40 && !found; m++) {
+        for (let n = 1; n <= 40 && !found; n++) {
+          const f =
+            (Math.PI / 2) *
+            bending *
+            ((m / geometry.spanXMeters) ** 2 + (n / geometry.spanYMeters) ** 2);
+          if (Math.abs(f - mode.frequencyHz) < 1e-6) found = true;
+        }
+      }
+      expect(found, `${mode.frequencyHz} Hz no es un modo real de la placa`).toBe(true);
+    }
   });
 });

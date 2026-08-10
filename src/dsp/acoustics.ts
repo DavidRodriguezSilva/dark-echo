@@ -139,10 +139,22 @@ export const MASS_LAW_VALIDITY_FLOOR_HZ = 100;
  * un retumbo sin identidad. Con el suelo, la lluvia sigue siendo reconocible
  * a bajo nivel, que es lo que de verdad se oye dentro de una casa.
  *
- * -24 dB corresponde a una construccion ligera, coherente con los panos de
- * este catalogo.
+ * Es el valor **por defecto**, y cada `Occlusion` puede declarar el suyo,
+ * porque el flanking describe la *instalacion*, no el material: una cubierta
+ * de tabla gruesa pertenece a una construccion mas maciza y mejor sellada que
+ * una de tabla fina. Tratarlo como una constante global fue un error medido:
+ * con un unico suelo para todas, el camino indirecto dominaba siempre y las
+ * propiedades de la propia barrera dejaban de importar -- una cubierta del
+ * doble de masa sonaba 0.06 dB mas baja que la fina, es decir, igual.
+ *
+ * -12 dB corresponde a una construccion ligera con huecos (una cabana de
+ * tabla, una fachada con ventana), donde el aislamiento aparente frente al
+ * ruido exterior es del orden de 10-15 dB, muy lejos del valor de laboratorio
+ * de la particion aislada. Un valor mucho mas severo (-24 dB) se probo
+ * primero y resulto ser el motivo de que la oclusion "atenuara casi todo el
+ * sonido" en la escucha.
  */
-export const FLANKING_FLOOR_DB = -24;
+export const FLANKING_FLOOR_DB = -12;
 
 export interface MassLawResponse {
   /** Corte del pasa-bajos equivalente, en Hz. */
@@ -173,6 +185,7 @@ export interface MassLawResponse {
  */
 export function massLawResponse(
   surfaceMassKgPerSquareMeter: number,
+  flankingFloorDb = FLANKING_FLOOR_DB,
   validityFloorHz = MASS_LAW_VALIDITY_FLOOR_HZ
 ): MassLawResponse {
   const lossDb = massLawTransmissionLossDb(surfaceMassKgPerSquareMeter, validityFloorHz);
@@ -182,10 +195,14 @@ export function massLawResponse(
     // Nunca por encima de la unidad: una barrera pasiva atenua o deja pasar,
     // no amplifica, por muy ligera que sea.
     gain: directGain,
-    // El camino indirecto nunca deja pasar mas que el directo: si la barrera
-    // es tan ligera que transmite mas que lo que la rodea, el flanking deja
-    // de ser el factor limitante.
-    flankingGain: Math.min(directGain, Math.pow(10, FLANKING_FLOOR_DB / 20)),
+    // Constante: el camino indirecto depende de como esta construido el
+    // recinto, no de la barrera. Es un **suelo**, no un tope -- cuanto mejor
+    // aisla la barrera, mas domina el flanking, y ese es justamente el
+    // fenomeno: por encima de cierto punto, reforzar la barrera ya no mejora
+    // el aislamiento porque el sonido la rodea. Los dos caminos van en
+    // paralelo, asi que la suma se queda con el que mas deje pasar en cada
+    // frecuencia sin necesidad de compararlos aqui.
+    flankingGain: Math.pow(10, flankingFloorDb / 20),
   };
 }
 

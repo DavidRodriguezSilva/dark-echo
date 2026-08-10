@@ -73,6 +73,17 @@ export class CompositionEngine {
   private occlusionStage: OcclusionStage | null = null;
   private environmentStage: EnvironmentStage | null = null;
 
+  /**
+   * Volumen maestro, con el mismo valor por defecto que `AmbientMixer`.
+   *
+   * No es un detalle de conveniencia: dejar el nodo maestro en su ganancia por
+   * defecto (1.0) hacia que el motor nuevo sonara al doble que el actual con
+   * el mismo material, y las capas de `rain` suman 1.35 de ganancia
+   * declarada. Ademas el comando `volume`, que opera sobre `AmbientMixer`, no
+   * llegaba hasta aqui, asi que no habia forma de bajarlo.
+   */
+  private masterVolume = 0.5;
+
   private readonly sessionSeed = randomSeed();
   private readonly sourceLayers = new Map<string, CompiledLayer>();
   private activeSourceId: string | null = null;
@@ -98,6 +109,7 @@ export class CompositionEngine {
       this.occlusionStage = new OcclusionStage(context);
       this.environmentStage = new EnvironmentStage(context, this.sessionSeed);
       this.master = context.createGain();
+      this.master.gain.value = this.masterVolume;
 
       // Mismo esquema de protección contra recorte que WorkletEngine
       // (audio-engine, "Salida acotada sin distorsión"): el motor nuevo
@@ -352,6 +364,26 @@ export class CompositionEngine {
       modifier ? `Modifier: ${modifier.id} (${modifier.distanceMeters} m)` : "Modifier: —",
     ];
     return parts.join(" | ");
+  }
+
+  /**
+   * Fija el volumen maestro del motor de composicion. Es independiente del de
+   * `AmbientMixer`: cada motor tiene su propia cadena de salida (design.md
+   * D1), asi que tambien su propio maestro.
+   */
+  setMasterVolume(value: number): CompositionResult {
+    if (value < 0 || value > 1) {
+      return { ok: false, message: "El volumen debe estar entre 0 y 1." };
+    }
+    this.masterVolume = value;
+    if (this.master && this.context) {
+      rampToValue(this.master.gain, this.context, value, 0.05);
+    }
+    return { ok: true, message: `Volumen del motor de composición: ${value}` };
+  }
+
+  getMasterVolume(): number {
+    return this.masterVolume;
   }
 
   get activeSource(): string | null {

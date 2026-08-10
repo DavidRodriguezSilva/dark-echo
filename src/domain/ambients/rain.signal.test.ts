@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compileLayer } from "../../audio/layerCompiler";
 import { rain } from "./rain";
-import { fractionOfEnergyInBand } from "../../testing/fft";
+import { fractionOfEnergyInBand, spectralSlopeDbPerOctave } from "../../testing/fft";
 import {
   maxPeakExcludingZeroLag,
   normalizedAutocorrelation,
@@ -74,6 +74,42 @@ describe("rain — ausencia de periodicidad", () => {
 
     expect(peak).toBeLessThan(MAX_PERIODICITY_PEAK);
   }, 60000);
+});
+
+describe("rain — ausencia de chisporroteo en agudos", () => {
+  /**
+   * Criterio anadido tras un defecto encontrado por escucha: la lluvia tenia
+   * un "chisporroteo o fritura" superpuesto. La causa era que el transitorio
+   * de impacto salia como ruido blanco **sin filtrar**, pese a que
+   * `impacto-gota` declara desde el principio un pasa-banda con su centro
+   * `f_i` entre 1500 y 6000 Hz: el parametro estaba en la referencia y no en
+   * el codigo. La capa `impactos` tenia el 46% de su energia por encima de
+   * 10 kHz y respuesta plana hasta Nyquist.
+   *
+   * Ninguno de los criterios existentes podia detectarlo: "fraccion de
+   * energia en la banda declarada" es una **cota inferior**, y se cumplia de
+   * sobra (74%) mientras el 26% restante se iba en siseo inaudible como
+   * lluvia pero muy audible como fritura. Hace falta acotar tambien por
+   * arriba lo que queda fuera de la banda.
+   */
+  it("no acumula energia por encima de 10 kHz, donde la lluvia no tiene fenomeno que modelar", async () => {
+    const buffer = await renderRainMix(44100, 20);
+    const aboveTenK = fractionOfEnergyInBand(buffer.getChannelData(0), 44100, [10000, 22050]);
+
+    // Medido tras implementar el pasa-banda declarado: 0.10%. El umbral deja
+    // margen amplio pero corta muy por debajo del 1.4% que habia antes.
+    expect(aboveTenK).toBeLessThan(0.005);
+  });
+
+  it("el espectro cae en la banda mas alta en vez de mantenerse plano como el ruido blanco", async () => {
+    const buffer = await renderRainMix(44100, 20);
+    const slope = spectralSlopeDbPerOctave(buffer.getChannelData(0), 44100, [8000, 20000]);
+
+    // Ruido blanco sin filtrar da ~0 dB/oct; la capa `impactos` medía
+    // -1.24 dB/oct antes de la correccion. Un transitorio con su banda
+    // declarada cae con claridad.
+    expect(slope).toBeLessThan(-6);
+  });
 });
 
 describe("rain — compatibilidad mono", () => {

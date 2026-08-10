@@ -20,6 +20,8 @@ export const techoMadera: OcclusionDeclaration = {
   model: "transmision-masa",
   densityKgPerCubicMeter: 500,
   thicknessMeters: 0.02,
+  // Construccion ligera: tabla fina sobre cabios, con juntas.
+  flankingFloorDb: -12,
   requiredSurfaces: ["techo"],
   affinityTraits: ["construido", "rustico"],
   resonance: {
@@ -42,8 +44,13 @@ export const techoMadera: OcclusionDeclaration = {
     // Solo la banda grave-media, donde los modos de este pano estan
     // realmente separados: es el "tamborileo" de la cubierta.
     modalBandHz: [40, 600],
-    modeCount: 4,
-    mix: 0.6,
+    modeCount: 8,
+    // Calibrado sobre el render real (no a ojo): con la compensacion de
+    // insercion del banco, `mix` es el nivel de la respuesta radiada frente a
+    // la senal incidente. Por encima de ~0.1 el repique se come la banda
+    // propia de la lluvia y la escena deja de sonar a lluvia bajo un techo
+    // para sonar solo al techo.
+    mix: 0.06,
   },
 };
 
@@ -62,8 +69,17 @@ export const techoMaderaGrueso: OcclusionDeclaration = {
   id: "techo-madera-grueso",
   label: "Techo de madera grueso",
   thicknessMeters: 0.04,
+  // Una cubierta del doble de espesor pertenece a una construccion mas maciza
+  // y mejor sellada: su camino indirecto tambien aisla mas. Sin esto, el
+  // flanking comun enmascaraba por completo la ventaja de la masa.
+  flankingFloorDb: -20,
   resonance: {
     ...techoMadera.resonance!,
     geometry: { spanXMeters: 3, spanYMeters: 0.6, thicknessMeters: 0.04 },
+    // La mitad que la tabla fina, y por la misma fisica que hace que aisle
+    // mas: ante la misma fuerza de impacto, un pano del doble de masa
+    // adquiere la mitad de velocidad, y la potencia que radia va con la
+    // velocidad. Doblar el espesor baja unos 6 dB lo que la placa devuelve.
+    mix: 0.03,
   },
 };

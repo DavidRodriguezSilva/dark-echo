@@ -168,6 +168,8 @@ function compileGranularLayer(
       impactDurationRange: declaration.impactDurationRange,
       bubbleProbability: declaration.bubbleProbability,
       bubbleMix: declaration.bubbleMix,
+      impactBandHz: declaration.impactBandHz,
+      impactQ: declaration.impactQ,
     },
   });
 
@@ -222,6 +224,8 @@ function compileSparseLayer(
       impactDurationRange: declaration.impactDurationRange,
       bubbleProbability: declaration.bubbleProbability,
       bubbleMix: declaration.bubbleMix,
+      impactBandHz: declaration.impactBandHz,
+      impactQ: declaration.impactQ,
       renderDurationSeconds: declaration.renderDurationSeconds,
     },
     destination

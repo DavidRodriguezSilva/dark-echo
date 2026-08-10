@@ -92,7 +92,7 @@ una fracción de impactos sin tono asociado.
 | Duración del decaimiento de burbuja   | `τ_b`   | s      | 0.004 – 0.02    | Las burbujas pequeñas de este rango se amortiguan en pocos ciclos; por debajo suena a clic sin tono, por encima suena a campana, ajeno al fenómeno.                                                                                                                                                                                                                                                                                                                                                                                               |
 | Deriva de tono durante el decaimiento | `Δf/f₀` | %      | 2 – 8           | Chirp ascendente audible pero sutil; documentado en grabaciones de gotas individuales, evita el tono "demasiado puro" de una sinusoide con envolvente simple.                                                                                                                                                                                                                                                                                                                                                                                     |
 | Duración del transitorio de impacto   | `τ_i`   | s      | 0.001 – 0.004   | Más corto que la burbuja: el impacto es percusivo, no tonal.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Centro de banda del impacto           | `f_i`   | Hz     | 1500 – 6000     | Banda ancha centrada por encima del registro de la burbuja, para que ambas componentes se perciban como capas distintas de un mismo evento.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Centro de banda del impacto           | `f_i`   | Hz     | 1500 – 6000     | Banda ancha centrada por encima del registro de la burbuja, para que ambas componentes se perciban como capas distintas de un mismo evento. **Se aplica solo al transitorio, no a la burbuja**: el modelo las sitúa en registros distintos a propósito. Valores en uso: `rain.impactos` 3500 Hz, `rain.goteo` 2800 Hz, `river.burbujeo` 2500 Hz, todos con `Q` 0.8 ("moderado").                                                                                                                                                                  |
 | Probabilidad de burbuja por impacto   | `p_b`   | —      | 0.5 – 0.85      | Fracción de gotas que suenan con tono además de impacto; por debajo el goteo suena a percusión pura, por encima pierde la variedad de un goteo real.                                                                                                                                                                                                                                                                                                                                                                                              |
 | Peso de burbuja en la mezcla final    | `w_b`   | —      | 0.15 – 0.5      | Reparto entre el transitorio de impacto y el tono de burbuja. El valor por defecto (0.5) es el reparto original, adecuado para gotas discernibles una a una (goteo, burbujeo de río y mar). A densidad muy alta y decaimiento muy corto —`rain.impactos`, 40 disparos/s— un peso de 0.5 hace que el tono senoidal ascendente domine y se perciba como un disparo o láser en vez de un impacto de lluvia; se bajó a 0.15 (0.25 en `goteo`, donde cada gota se oye por separado y admite algo más de tono) tras confirmarse el defecto por escucha. |
 
@@ -103,6 +103,36 @@ water_. La resonancia de burbuja arrastrada como origen del sonido de la
 lluvia está descrita en la literatura de acústica submarina de precipitación
 (bubble-mediated rain noise); el mecanismo de arrastre de burbuja por impacto
 de gota es un resultado establecido de esa literatura.
+
+### El pasa-banda del impacto: declarado desde el principio, implementado tarde
+
+Durante toda la vida del catálogo, `createDropVoice` emitió el transitorio
+como **ruido blanco sin filtrar**: `f_i` existía en la tabla de arriba y no
+existía en el código. Es el mismo tipo de desajuste entre modelo documentado y
+código que ya se corrigió en `ocean.rompiente`, y se detectó igual —por
+escucha—: la lluvia llevaba superpuesto un "chisporroteo o fritura".
+
+Medido sobre el render real, con la capa `rain.impactos` aislada:
+
+| Magnitud                      | Sin el pasa-banda                       | Con el pasa-banda |
+| ----------------------------- | --------------------------------------- | ----------------- |
+| Energía por encima de 10 kHz  | 45.97%                                  | 5.22%             |
+| Energía en 16–22 kHz          | 22.1%                                   | 0.45%             |
+| Pendiente entre 8 y 20 kHz    | −1.24 dB/oct (plana, ruido blanco puro) | cae con claridad  |
+| Energía en la banda de `rain` | —                                       | 74.2%             |
+
+En la mezcla completa de `rain`, la energía por encima de 10 kHz baja del
+1.39% al 0.10%, y la fracción en la banda declarada **sube** de 74.7% a 76.0%:
+la corrección no sacrifica nada del fenómeno, solo retira siseo que no
+pertenecía a él.
+
+**Por qué ningún criterio lo detectaba** (y qué se añadió): todos los
+criterios espectrales de este documento son **cotas inferiores** —"al menos el
+X% de la energía dentro de la banda declarada"—. `rain` cumplía la suya con
+holgura (74%) mientras el 26% restante se iba en siseo de banda alta:
+inaudible como lluvia, muy audible como fritura. Una cota inferior no dice
+nada sobre lo que queda fuera. Se añadieron dos criterios que sí acotan por
+arriba (ver "Criterios de aceptación", _Contenido fuera de banda_).
 
 ### Alternativas consideradas
 
@@ -576,25 +606,67 @@ como lo que es —un pasa-bajos de un polo— igualando su asíntota a la ley:
 
 La barrera _es_ un pasa-bajos cuyo corte fija su masa superficial. De ahí sale
 también, sin declarar nada nuevo, el grado de aislamiento: **duplicar el
-espesor duplica `m_s`, baja `f_c` una octava y atenúa 6 dB más en toda la
-banda audible**. La variante gruesa de un material no necesita una segunda
-tabla de valores, solo otro espesor.
+espesor duplica `m_s` y atenúa 6 dB más en toda la banda audible**. La
+variante gruesa de un material no necesita una segunda tabla de valores, solo
+otro espesor.
+
+La ley tiene, sin embargo, **dos límites de validez** que el modelo respeta, y
+no son detalles menores: sin ellos el resultado deja de sonar a barrera.
+
+**Suelo de validez (100 Hz).** La ley describe la región _controlada por
+masa_. Por debajo de la primera resonancia del paño manda la rigidez, y
+extrapolada hacia el infrasonido la fórmula predice transmisión creciente sin
+límite —cuando ninguna barrera pasiva amplifica—. Los paños de este catálogo
+resuenan entre 43 Hz (el acristalamiento) y 110 Hz (la tabla de cubierta), y
+se toma 100 Hz como suelo común: por debajo la respuesta se aplana en lugar de
+seguir subiendo. Medido sobre el render real, colocar mal ese suelo tenía una
+consecuencia grande: la ventaja de la ley en graves amplificaba una zona donde
+`impacto-gota` no modela **nada** (no describe nada por debajo de 1 kHz, así
+que lo que hay ahí es suelo de ruido de los generadores), y la energía por
+debajo de 80 Hz pasaba del 2% de la escena al 37–50%. La barrera convertía un
+residuo en la mitad de la salida.
+
+**Suelo por transmisión indirecta —_flanking_—, declarado por barrera.** La ley describe una
+barrera aislada e infinita. En una construcción real el sonido también llega
+rodeándola —uniones, forjado, carpintería, rendijas—, y esos caminos limitan
+el aislamiento efectivo por mucho que la barrera mejore; es la razón conocida
+de que el aislamiento de campo nunca alcance el de laboratorio. Se modela como
+un camino paralelo, plano en frecuencia.
+
+Es un **suelo, no un tope**: cuanto mejor aísla la barrera, más domina el
+flanking. Sin él, la ley extrapolada lleva la barrera al silencio en agudos
+(−33 dB a 1 kHz, −45 dB a 4 kHz) y lo único que sobrevive es la banda más
+grave: el resultado deja de sonar a "lluvia apagada" para sonar a un retumbo
+sin identidad. Con él, la lluvia sigue siendo reconocible a bajo nivel, que es
+lo que de verdad se oye dentro de una casa.
+
+Se declara **por barrera**, no como constante global, porque el flanking
+describe la _instalación_ y no el material: una cubierta de tabla gruesa
+pertenece a una construcción más maciza y mejor sellada que una de tabla fina.
+La primera versión usaba un único valor para todo el catálogo y eso tenía una
+consecuencia medida y grave: el camino indirecto dominaba siempre, así que las
+propiedades de la propia barrera dejaban de importar y **una cubierta del
+doble de masa sonaba 0.06 dB más baja que la fina** —es decir, igual—,
+incumpliendo el requisito de "grado propio de atenuación" de la capacidad
+`ambient-occlusion`. Con el suelo declarado por barrera, la diferencia vuelve
+a ser de −1.9 dB.
 
 ### Parámetros
 
-| Parámetro        | Símbolo | Unidad | Rango       | Justificación                                                                                                                  |
-| ---------------- | ------- | ------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| Densidad         | `ρ`     | kg/m³  | 300 – 2600  | De una madera ligera al vidrio y el hormigón; valores tabulados por material.                                                  |
-| Espesor          | `h`     | m      | 0.003 – 0.2 | De un acristalamiento simple a un muro; es el único parámetro que cambia entre la variante delgada y la gruesa de un material. |
-| Masa superficial | `m_s`   | kg/m²  | derivada    | `ρ · h`. No se declara: se deriva, porque es la magnitud que de verdad gobierna el aislamiento.                                |
+| Parámetro         | Símbolo | Unidad | Rango       | Justificación                                                                                                                  |
+| ----------------- | ------- | ------ | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Densidad          | `ρ`     | kg/m³  | 300 – 2600  | De una madera ligera al vidrio y el hormigón; valores tabulados por material.                                                  |
+| Espesor           | `h`     | m      | 0.003 – 0.2 | De un acristalamiento simple a un muro; es el único parámetro que cambia entre la variante delgada y la gruesa de un material. |
+| Masa superficial  | `m_s`   | kg/m²  | derivada    | `ρ · h`. No se declara: se deriva, porque es la magnitud que de verdad gobierna el aislamiento.                                |
+| Suelo de flanking | —       | dB     | −8 – −25    | Aislamiento máximo que permite la instalación. Propiedad de cómo está puesta la barrera, no de su material.                    |
 
 **Valores declarados en esta entrega:**
 
-| `Occlusion`           | ρ (kg/m³) | h (m) | m_s (kg/m²) | f_c (Hz) | TL a 1 kHz |
-| --------------------- | --------- | ----- | ----------- | -------- | ---------- |
-| `techo-madera`        | 500       | 0.020 | 10          | 22.4     | 33 dB      |
-| `techo-madera-grueso` | 500       | 0.040 | 20          | 11.2     | 39 dB      |
-| `ventana-vidrio`      | 2500      | 0.004 | 10          | 22.4     | 33 dB      |
+| `Occlusion`           | ρ (kg/m³) | h (m) | m_s (kg/m²) | TL en el suelo (100 Hz) | TL a 1 kHz | Flanking |
+| --------------------- | --------- | ----- | ----------- | ----------------------- | ---------- | -------- |
+| `techo-madera`        | 500       | 0.020 | 10          | 13.0 dB                 | 33 dB      | −12 dB   |
+| `techo-madera-grueso` | 500       | 0.040 | 20          | 19.0 dB                 | 39 dB      | −20 dB   |
+| `ventana-vidrio`      | 2500      | 0.004 | 10          | 13.0 dB                 | 33 dB      | −12 dB   |
 
 Que `techo-madera` y `ventana-vidrio` salgan **idénticos** en transmisión no
 es un error del catálogo: una tabla de pino de 20 mm y un vidrio de 4 mm
@@ -604,28 +676,12 @@ y deja claro que el material por sí solo no determina el aislamiento —lo hace
 la masa por unidad de superficie—. Lo que sí los distingue es su respuesta
 propia (`resonancia-placa`).
 
-### Ganancia de compensación (decisión de producto, no del modelo)
-
-La ley de masas aplicada tal cual deja una barrera de 10 kg/m² unos 33 dB por
-debajo a 1 kHz. Es físicamente correcto —es lo que de verdad aísla un
-acristalamiento simple—, pero convertiría la escena en algo inaudible sin
-subir el volumen maestro cada vez que se activa una oclusión. El runtime
-aplica una **ganancia de compensación fija**, referida a la barrera más ligera
-del catálogo (10 kg/m² a 1 kHz), de modo que:
-
-- el **timbre** que aporta la oclusión —la caída de 6 dB/octava, que es el
-  rasgo audible— se conserva intacto;
-- las diferencias **relativas** entre barreras se mantienen: una barrera del
-  doble de masa sigue sonando 6 dB por debajo de la ligera;
-- el nivel **absoluto** queda utilizable sin tocar el volumen maestro.
-
-Queda declarado aquí como lo que es: una decisión de producto sobre el nivel
-de escucha, no una corrección del modelo físico.
-
 ### Fuente y fundamento
 
 Ley de masas de incidencia de campo, resultado estándar de acústica de la
-edificación para el aislamiento de particiones homogéneas.
+edificación para el aislamiento de particiones homogéneas. La transmisión
+indirecta (_flanking_) como límite del aislamiento de campo es igualmente
+estándar en esa literatura.
 
 ### Alternativas consideradas
 
@@ -633,6 +689,18 @@ edificación para el aislamiento de particiones homogéneas.
   tratara la oclusión como un simple control de volumen. Descartada: sin la
   pendiente de 6 dB/octava, ocluir suena a bajar el volumen, no a estar detrás
   de algo. La pendiente _es_ el fenómeno.
+- **Ganancia de compensación constante para hacer la oclusión más audible.**
+  Fue la primera implementación: se aplicaba la ley con el corte en
+  `223.9 / m_s` (unos 22 Hz) y se compensaba con +33 dB para que el resultado
+  no fuera inaudible. Equivalente en medios, pero añadía un realce enorme por
+  debajo de 50 Hz —el pico espectral de toda la escena quedaba en 32 Hz—.
+  Sustituida por el suelo de validez más el suelo de flanking, que resuelven
+  el mismo problema de nivel **sin** inventar una ganancia: el nivel utilizable
+  sale de reconocer dónde deja de aplicar la ley, no de compensarla.
+- **Ley de masas sin ningún suelo.** Es la versión de manual, y es la correcta
+  para una partición aislada en laboratorio. Descartada para este producto
+  porque una escena no es un ensayo: sin flanking la barrera tiende al
+  silencio en agudos y deja de sonar a lluvia.
 - **Modelo completo con frecuencia crítica y ley de coincidencia.** Más fiel:
   toda partición real pierde aislamiento en una banda estrecha alrededor de su
   frecuencia crítica. Se descartó por ahora porque introduce un rasgo estrecho
@@ -667,37 +735,89 @@ c_B  = h · √( E / (12·(1−ν²)·ρ) )
 con `E` el módulo de Young en Pa, `ν` el coeficiente de Poisson, `ρ` la
 densidad, `h` el espesor y `Lx`,`Ly` la luz entre apoyos.
 
-El amortiguamiento sale del **factor de pérdida** del material: `Q = 1/η`. Esa
-es la clave perceptual —y la razón por la que la madera y el vidrio se
-distinguen pese a tener frecuencias modales del mismo orden—:
+El amortiguamiento sale del factor de pérdida **total de la placa instalada**:
+`Q = 1/η`. Que sea el total y no el del material es la corrección más
+importante de este modelo: una placa montada y radiando al aire pierde energía
+por tres vías —amortiguamiento interno, radiación acústica y disipación en los
+apoyos— y en un panel ligero las dos últimas dominan sobre la primera.
 
-- pino, `η ≈ 0.02` → `Q ≈ 50`: cada impacto es un **golpe seco**;
-- vidrio, `η ≈ 0.002` → `Q ≈ 500`: cada impacto **tiñe y se sostiene**.
+- pino montado sobre cabios, `η ≈ 0.08` → `Q ≈ 12.5`: cada impacto es un
+  **golpe seco**;
+- vidrio enmarcado, `η ≈ 0.03` → `Q ≈ 33` (acotado a 20): **se sostiene más**.
 
-Se implementa como un banco de filtros de banda en paralelo, alimentado por la
-señal del `Source`. Esa topología satisface por construcción los tres
-requisitos de la capacidad `ambient-occlusion`: la respuesta depende del
-`Source`, escala con su intensidad (más energía incidente, más excitación) y
-es **muda sin `Source`**, porque un filtro sin entrada no produce salida.
+Esa diferencia es la que distingue madera de vidrio pese a tener frecuencias
+modales del mismo orden. Usar el factor del material a secas (0.02 y 0.002)
+daba `Q` de 50 y 500 —un orden de magnitud de más— y la placa dejaba de sonar
+a placa golpeada para sonar a zumbido sostenido.
+
+Se implementa como un banco de filtros de banda en paralelo. Esa topología
+satisface por construcción los tres requisitos de la capacidad
+`ambient-occlusion`: la respuesta depende del `Source`, escala con su
+intensidad (más energía incidente, más excitación) y es **muda sin `Source`**,
+porque un filtro sin entrada no produce salida.
+
+**Qué excita al banco.** No la señal completa del `Source`, sino su contenido
+transitorio (por encima de 1.5 kHz). Lo que hace vibrar la placa es el
+**impacto** de cada gota —una fuerza breve y de banda ancha—, no el campo
+acústico continuo de la masa de lluvia. Alimentar los resonadores con la señal
+entera metía también la capa `cuerpo`, un ruido sostenido, y un resonador
+excitado sin pausa deja de sonar a placa golpeada para sonar a tono.
+
+**Hasta dónde llega el banco.** Solo hasta 600 Hz, no por todo el rango
+audible, y esto tampoco es una simplificación inofensiva. La densidad modal de
+una placa crece con la frecuencia: abajo los modos están bien separados y se
+oyen como resonancias propias, pero arriba se solapan por decenas y su suma es
+una respuesta **suave**, no una serie de picos. Representar esa zona con un
+puñado de resonadores discretos introduce tonos que la placa real no tiene.
+Por encima de esa banda, el color de la barrera lo aporta el camino de
+transmisión, que ya es suave por construcción.
+
+**Compensación de la pérdida de inserción del banco.** Un filtro de banda solo
+deja pasar un sliver de espectro: su ancho de banda de ruido es
+`(π/2)·(f/Q)`, unos 9 Hz para un modo de 110 Hz con `Q` 12.5. Ocho de esos
+suman una fracción pequeña de los 22 kHz de la señal, así que el banco
+entregaba del orden de 20 dB menos que su entrada y el nivel declarado no
+significaba nada. Se normaliza por el ancho de banda total del banco, de modo
+que `mix` sí es lo que dice: **el nivel de la respuesta radiada frente a la
+señal incidente**, referido a una excitación de espectro plano. Sin esa
+normalización, cambiar el `Q` o el número de modos —decisiones sobre el
+_timbre_— alteraría de rebote el _volumen_ de la barrera.
+
+**Cuánto radia una placa más pesada.** Menos, y por la misma física que la
+hace aislar más: ante la misma fuerza de impacto, un paño del doble de masa
+adquiere la mitad de velocidad, y lo que radia va con la velocidad. Doblar el
+espesor baja unos 6 dB la respuesta propia —por eso `techo-madera-grueso`
+declara la mitad de `mix` que `techo-madera`, y no es un ajuste a oído—.
+
+**Cómo se eligen los modos dentro de la banda.** Repartidos en escala
+logarítmica, no los `modeCount` más graves. La serie modal arranca muy
+apretada —los seis primeros modos del paño de cubierta caben en menos de una
+octava— y quedarse con ese grupo produce un cúmulo de resonancias vecinas que,
+excitadas sin pausa, zumban como una sola. Los modos seleccionados siguen
+siendo modos reales de la placa (no se inventa ninguna frecuencia); lo que
+cambia es que el banco cubre la banda en vez de amontonarse donde la serie es
+más densa.
 
 ### Parámetros
 
-| Parámetro                      | Símbolo | Unidad | Rango        | Justificación                                                                                                                                            |
-| ------------------------------ | ------- | ------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Módulo de Young                | `E`     | Pa     | 5e8 – 8e10   | De una madera blanda al vidrio; valores tabulados por material.                                                                                          |
-| Coeficiente de Poisson         | `ν`     | —      | 0.2 – 0.35   | Rango de sólidos estructurales habituales.                                                                                                               |
-| Factor de pérdida              | `η`     | —      | 0.001 – 0.05 | Lo que separa un material que tiñe de uno que golpea; es el parámetro perceptualmente decisivo.                                                          |
-| Luz entre apoyos               | `Lx,Ly` | m      | 0.3 – 4      | Un paño de cubierta lo delimitan los cabios, no la superficie total del techo: la luz corta es la separación entre apoyos.                               |
-| Número de modos compilados     | —       | —      | 4 – 8        | Cota explícita del coste del banco. Los modos de orden alto se acumulan tan densamente que dejan de ser resonancias discernibles.                        |
-| Nivel de la respuesta propia   | —       | —      | 0 – 1        | Cuánto pesa este camino en la mezcla. **Es una decisión de mezcla, no física**: la física fija qué frecuencias suenan y cuánto duran, no cuánto se oyen. |
-| Cota de `Q` por implementación | —       | —      | [10, 120]    | Un `Q` de varios cientos en un biquad de precisión simple a frecuencia baja es numéricamente inestable. Limita al vidrio (500 → 120), no a la madera.    |
+| Parámetro                             | Símbolo | Unidad | Rango       | Justificación                                                                                                                                                                 |
+| ------------------------------------- | ------- | ------ | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Módulo de Young                       | `E`     | Pa     | 5e8 – 8e10  | De una madera blanda al vidrio; valores tabulados por material.                                                                                                               |
+| Coeficiente de Poisson                | `ν`     | —      | 0.2 – 0.35  | Rango de sólidos estructurales habituales.                                                                                                                                    |
+| Factor de pérdida **total instalado** | `η`     | —      | 0.02 – 0.15 | Lo que separa una placa que se sostiene de una que golpea; es el parámetro perceptualmente decisivo. Es el total (material + radiación + apoyos), **no** el del material.     |
+| Luz entre apoyos                      | `Lx,Ly` | m      | 0.3 – 4     | Un paño de cubierta lo delimitan los cabios, no la superficie total del techo: la luz corta es la separación entre apoyos.                                                    |
+| Banda modal declarada                 | —       | Hz     | 40 – 600    | Dónde los modos están suficientemente separados para oírse como resonancias. Por encima se solapan y la respuesta real es suave.                                              |
+| Número de modos compilados            | —       | —      | 4 – 8       | Cota explícita del coste del banco, repartidos por la banda declarada.                                                                                                        |
+| Nivel de la respuesta propia          | —       | —      | 0 – 1       | Cuánto pesa este camino en la mezcla. **Es una decisión de mezcla, no física**: la física fija qué frecuencias suenan y cuánto duran, no cuánto se oyen.                      |
+| Cota de `Q` por implementación        | —       | —      | [4, 20]     | Un `Q` alto en un biquad de precisión simple a frecuencia baja es numéricamente delicado, y un banco discreto no debe sonar más resonante que la placa continua que aproxima. |
 
 **Valores declarados en esta entrega:**
 
-| `Occlusion`      | Paño (m)  | E (Pa) | η     | Q   | f del modo fundamental |
-| ---------------- | --------- | ------ | ----- | --- | ---------------------- |
-| `techo-madera`   | 3 × 0.6   | 8e9    | 0.02  | 50  | ≈ 110 Hz               |
-| `ventana-vidrio` | 1.2 × 0.8 | 70e9   | 0.002 | 120 | ≈ 22 Hz                |
+| `Occlusion`           | Paño (m)  | E (Pa) | η (instalado) | Q    | Banda modal | Modos | `mix` |
+| --------------------- | --------- | ------ | ------------- | ---- | ----------- | ----- | ----- |
+| `techo-madera`        | 3 × 0.6   | 8e9    | 0.08          | 12.5 | 40 – 600 Hz | 8     | 0.06  |
+| `techo-madera-grueso` | 3 × 0.6   | 8e9    | 0.08          | 12.5 | 40 – 600 Hz | 8     | 0.03  |
+| `ventana-vidrio`      | 1.2 × 0.8 | 70e9   | 0.03          | 20   | 40 – 600 Hz | 8     | 0.025 |
 
 El módulo de la madera es un **valor efectivo**: el pino es muy anisótropo
 (unos 10 GPa en la dirección de la fibra frente a ~0.5 GPa en la transversal),
@@ -729,6 +849,15 @@ del factor de calidad a partir del amortiguamiento estructural.
   duplicaría el coste del camino granular ya existente y volvería a exigir
   conocer los eventos del `Source`. El filtrado resonante es la misma física
   vista como función de transferencia en lugar de como síntesis por evento.
+- **Factor de pérdida del material en lugar del de la placa instalada.** Fue
+  la primera implementación y es un error de modelo, no una aproximación: da
+  `Q` un orden de magnitud demasiado alto (50 y 500 en vez de 12.5 y 33)
+  porque ignora la radiación y los apoyos, que en un panel ligero dominan.
+- **Los `modeCount` modos más graves, por todo el rango audible.** También de
+  la primera implementación. Combinado con el `Q` anterior, producía seis
+  resonadores de `Q` alto apiñados entre 110 y 258 Hz —menos de una octava—
+  excitados de forma continua: no sonaba a techo, sonaba a **zumbido de arco
+  eléctrico**. Ver el registro de validaciones.
 
 ---
 
@@ -825,6 +954,25 @@ toca nada por debajo de su corte). El umbral se ajustó al valor medido en
 lugar de forzar el diseño a una banda que no es la que el ruido marrón
 produce de forma natural; queda para la validación perceptual (tarea 10.5)
 si ese grave adicional se oye bien o hace falta un pasa-altos suave.
+
+### Contenido fuera de banda
+
+Los criterios espectrales de arriba son cotas **inferiores**: garantizan que
+el fenómeno está donde debe, pero no dicen nada sobre lo que queda fuera. Un
+ambiente puede cumplirlos de sobra y aun así llevar superpuesto un siseo de
+banda alta que no pertenece a ningún fenómeno modelado —fue exactamente el
+caso de `rain` hasta que se implementó el pasa-banda de `impacto-gota`—.
+
+Para todo ambiente cuyo modelo no describa contenido por encima de 10 kHz:
+
+- **Energía por encima de 10 kHz**: SHALL quedar por debajo del **0.5%** del
+  total. `rain` mide 0.10%.
+- **Pendiente entre 8 y 20 kHz**: SHALL ser inferior a **−6 dB/octava**. El
+  ruido blanco sin filtrar da ~0 dB/oct, así que este criterio distingue un
+  agudo que decae —el de un fenómeno real— de uno plano hasta Nyquist.
+
+No aplica a `white-noise`, `pink-noise` ni `brown-noise`, cuyo modelo _es_ un
+espectro declarado hasta Nyquist (ver su propio criterio de pendiente).
 
 ### Criterio espectral para ruido de color
 
@@ -1033,3 +1181,143 @@ tiempo.
   es contra el estado inicial de esta ronda de refinamiento, no contra el
   prototipo original pre-`procedural-audio-foundation` — esa comparación ya
   se registró al portar cada ambiente (tareas 8.4/10.4).
+
+### 2026-08-02 — motor de composición, piloto de `rain` (escucha del propietario)
+
+Primera escucha del motor de composición con `rain` y una `Occlusion` activa.
+Veredicto: **la lluvia se oye bien en general, pero destacaba claramente un
+sonido "como de arco eléctrico"**.
+
+Lo relevante para el método: **toda la suite de señal pasaba** —109 tests, la
+mayoría verificando fracción de energía en banda— y ninguno detectó el
+defecto. Un zumbido tonal dentro de la banda correcta satisface un criterio de
+"fracción de energía en banda" exactamente igual de bien que el ruido de banda
+ancha que se buscaba. El criterio no era laxo: era **ciego a esa dimensión**.
+
+Tres causas, todas medidas sobre el render real tras el reporte:
+
+1. **Factor de pérdida del material en vez del de la placa instalada** → `Q`
+   de 50 y 500 donde correspondían 12.5 y 33.
+2. **Los seis modos más graves**, apiñados entre 110 y 258 Hz: un cúmulo de
+   resonadores vecinos de `Q` alto que, excitados sin pausa por la señal
+   completa (incluida la capa continua `cuerpo`), zumbaban como uno solo.
+3. **Ley de masas extrapolada por debajo de su región de validez**, con una
+   ganancia de compensación de +33 dB encima: el pico espectral de toda la
+   escena estaba en 32 Hz y la energía por debajo de 80 Hz era el 37–50% del
+   total, frente al 2% de `rain` sin ocluir.
+
+Correcciones aplicadas: factor de pérdida instalado, banda modal acotada a
+40–600 Hz con los modos repartidos logarítmicamente, excitación del banco
+desde el contenido transitorio, suelo de validez de la ley de masas en 100 Hz
+y suelo de flanking en −24 dB.
+
+Medido antes y después, sobre el mismo render:
+
+| Escena                   | Tonalidad en banda (pico/mediana)   | Energía < 80 Hz | Energía en la banda de `rain` |
+| ------------------------ | ----------------------------------- | --------------- | ----------------------------- |
+| `rain` sin ocluir (ref.) | 17                                  | 2%              | 75%                           |
+| `rain` + techo, antes    | 214 (hasta 10 887 sin acotar banda) | 37–50%          | 40–55%                        |
+| `rain` + techo, después  | 26                                  | 14%             | 67%                           |
+
+Además, el pico espectral de la escena ocluida vuelve a estar en 1297 Hz —el
+pico propio de `rain`— en lugar de en una frecuencia modal de la barrera.
+
+**Criterio nuevo, para que no vuelva a pasar en silencio**:
+`testing/tonality.ts` (relación pico/mediana espectral en banda) y el archivo
+`occlusionTonality.signal.test.ts`, calibrados contra `rain` sin ocluir. Una
+barrera puede subir la tonalidad —concentrar energía en sus modos _es_ el
+fenómeno— pero no cambiar de categoría.
+
+**Pendiente**: repetir la escucha para confirmar que el zumbido desapareció
+perceptualmente, no solo en la medida, y evaluar el resto de rasgos del
+protocolo (tareas 2.3, 3.6, 4.8 y 5.4 del change).
+
+### 2026-08-02 (segunda ronda) — motor de composición: saturación y oclusión inaudible
+
+Segunda escucha, tras las correcciones de la entrada anterior. Tres
+observaciones del propietario, y las tres eran defectos reales:
+
+1. **`compose source rain` seguía con el "arco eléctrico"**, descrito ahora
+   como "una saturación que se oye como picos o bajonazos". Decisivo: con
+   _solo_ el `Source` activo no hay banco resonante en el grafo, así que la
+   causa no podía ser la resonancia —la hipótesis de la ronda anterior—.
+2. **`compose environment cabana` sonaba bien.**
+3. **Las oclusiones "no se oyen del todo, es como si atenuaran casi todo".**
+
+Causas encontradas, todas midiendo sobre el render real:
+
+- **El nodo maestro del motor nuevo se quedaba en su ganancia por defecto
+  (1.0)** mientras el motor actual usa 0.5. Sonaba al doble, con las capas de
+  `rain` sumando 1.35 de ganancia declarada. Además el comando `volume` opera
+  sobre `AmbientMixer` y no llegaba hasta aquí, así que no había forma de
+  bajarlo. Añadido `compose volume <0-1>`.
+- **Una etapa "inactiva" no era transparente.** El `Modifier` dejaba un
+  pasa-bajos permanentemente en la cadena con el corte en 20 kHz —0.9 de
+  Nyquist a 44.1 kHz—, donde un biquad distorsiona la fase aunque su magnitud
+  sea plana: con el `Modifier` apagado ya subía el pico y el factor de cresta
+  un 13% a igual RMS, y dejaba una señal de diferencia a −21.9 dB frente a la
+  cadena directa. Ahora las tres etapas tienen camino de derivación real y la
+  diferencia es de 1.5e-8 (uno o dos ULP de float32, ≈ −156 dB).
+- **La oclusión era inaudible por dos motivos que se sumaban.** El suelo de
+  flanking en −24 dB dejaba la banda propia de la lluvia demasiado baja; y el
+  banco resonante estaba efectivamente mudo porque la ronda anterior
+  filtraba su excitación por encima de 1.5 kHz mientras sus modos están entre
+  40 y 600 Hz —los filtros de banda no recibían energía en su banda de paso—.
+  Corregido el filtro, añadida la compensación de pérdida de inserción del
+  banco, y bajado el suelo de flanking a −12 dB.
+- **Al bajar el flanking apareció un defecto nuevo**, detectado por los tests
+  y no por el oído: con un suelo único para todo el catálogo, el camino
+  indirecto dominaba siempre y `techo-madera-grueso` sonaba **0.06 dB** más
+  bajo que `techo-madera` —incumpliendo el requisito de "grado propio de
+  atenuación"—. Resuelto declarando el flanking por barrera.
+
+Medido, sobre el mismo render (referencia = `rain` sin ocluir):
+
+| Magnitud                                        | Antes    | Ahora           |
+| ----------------------------------------------- | -------- | --------------- |
+| Diferencia con la cadena directa, todo inactivo | −21.9 dB | −156 dB         |
+| Factor de cresta frente al motor actual         | +13%     | idéntico        |
+| Nivel de `rain` + `techo-madera`                | −12.5 dB | −7.6 dB         |
+| Tonalidad de `rain` + `techo-madera`            | 214      | 25–33 (ref. 16) |
+| `techo-madera-grueso` vs `techo-madera`         | 0.06 dB  | −1.9 dB         |
+
+**Criterios nuevos**: `compositionOutput.signal.test.ts` verifica que la
+cadena completa con todo inactivo coincide con la directa hasta la precisión
+de float32, que no cambia el factor de cresta, y que la escena queda con
+margen frente al umbral del limitador. Cubre el hueco que permitió el defecto:
+**los tests de señal conectaban las capas directamente al destino, saltándose
+el nodo maestro y el limitador**, así que ninguno podía ver un problema de
+nivel de salida.
+
+**Pendiente**: tercera escucha para confirmar las tres observaciones.
+
+### 2026-08-02 (tercera ronda) — chisporroteo en `rain`, en ambos motores
+
+Tercera escucha. El propietario confirma que `compose source rain` ya suena
+igual que `play rain` —las correcciones de la ronda anterior funcionaron— y
+señala algo nuevo y más de fondo: **`play rain` también lleva un
+"chisporroteo o fritura"**, con la hipótesis de que son picos por encima de
+10 kHz y de que vienen de la capa de lluvia cercana.
+
+La hipótesis era correcta y la medición la confirmó de inmediato: la capa
+`impactos` tenía el **46% de su energía por encima de 10 kHz** y respuesta
+plana hasta Nyquist (−1.24 dB/oct), frente al 0.04% de `cuerpo`. Causa: el
+transitorio de impacto salía como ruido blanco sin filtrar, aunque
+`impacto-gota` declara un pasa-banda con centro `f_i` entre 1500 y 6000 Hz
+desde que se escribió el modelo. Detalle completo y cifras en
+`impacto-gota`, sección "El pasa-banda del impacto".
+
+Alcance de la corrección: es un defecto del **motor actual**, no del motor de
+composición —afecta a `play rain` igual que a `compose source rain`—. Se
+corrigió también `river.burbujeo`, que usa el mismo modelo y tenía el mismo
+desajuste; `ocean.rompiente` ya estaba a salvo porque declara un pasa-banda a
+nivel de capa.
+
+**Criterios nuevos**: "Contenido fuera de banda", que acota por arriba lo que
+queda fuera de la banda declarada. Es la tercera vez consecutiva que un
+defecto se encuentra por escucha y no por la suite; las tres veces el hueco
+fue el mismo en el fondo —criterios que solo miran _dentro_ de la banda
+esperada— y las tres veces se cerró añadiendo el criterio que faltaba, no
+relajando los existentes.
+
+**Pendiente**: escucha de confirmación.

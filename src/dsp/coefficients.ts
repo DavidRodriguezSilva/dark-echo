@@ -38,3 +38,67 @@ export function onePoleLowpassResponseAt(
 
   return (1 - a) / denominatorMagnitude;
 }
+
+/** Coeficientes de un biquad en forma directa I, ya normalizados por `a0`. */
+export interface BiquadCoefficients {
+  b0: number;
+  b1: number;
+  b2: number;
+  a1: number;
+  a2: number;
+}
+
+/**
+ * Pasa-banda de dos polos (formulario RBJ, ganancia de pico 0 dB) derivado de
+ * su frecuencia central en Hz, su `Q` y la frecuencia de muestreo real -- no
+ * de coeficientes fijos, igual que el resto de este modulo.
+ *
+ * Lo usa la voz de gota para el transitorio de impacto, que
+ * `docs/synthesis-reference.md` (`impacto-gota`) declara como "un pulso de
+ * ruido pasado por un filtro pasa-banda de Q moderado" con su centro de banda
+ * `f_i` entre 1500 y 6000 Hz.
+ */
+export function biquadBandpassCoefficients(
+  centerHz: number,
+  q: number,
+  sampleRate: number
+): BiquadCoefficients {
+  const w0 = (2 * Math.PI * centerHz) / sampleRate;
+  const alpha = Math.sin(w0) / (2 * q);
+  const cosW0 = Math.cos(w0);
+  const a0 = 1 + alpha;
+
+  return {
+    b0: alpha / a0,
+    b1: 0,
+    b2: -alpha / a0,
+    a1: (-2 * cosW0) / a0,
+    a2: (1 - alpha) / a0,
+  };
+}
+
+/** Estado de un biquad de segundo orden, un canal. */
+export interface BiquadState {
+  x1: number;
+  x2: number;
+  y1: number;
+  y2: number;
+}
+
+export function createBiquadState(): BiquadState {
+  return { x1: 0, x2: 0, y1: 0, y2: 0 };
+}
+
+/** Procesa una muestra por el biquad, actualizando su estado en sitio. */
+export function processBiquad(
+  state: BiquadState,
+  { b0, b1, b2, a1, a2 }: BiquadCoefficients,
+  input: number
+): number {
+  const output = b0 * input + b1 * state.x1 + b2 * state.x2 - a1 * state.y1 - a2 * state.y2;
+  state.x2 = state.x1;
+  state.x1 = input;
+  state.y2 = state.y1;
+  state.y1 = output;
+  return output;
+}

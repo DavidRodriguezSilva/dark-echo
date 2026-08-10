@@ -123,9 +123,15 @@ export function createCommandRegistry(
       name: "compose",
       aliases: [],
       description:
-        'Motor de composición (piloto): "compose source|environment|occlusion|modifier <id|off>" activa o retira cada componente, "compose distance <metros>" mueve la distancia, "compose list" muestra los componentes disponibles, "compose status" la escena activa y "compose stop" la desmonta. Distinto de "play"/"add"/"remove", que operan el motor actual.',
+        'Motor de composición (piloto): "compose source|environment|occlusion|modifier <id|off>" activa o retira cada componente, "compose distance <metros>" mueve la distancia, "compose volume <0-1>" ajusta su volumen maestro, "compose list" muestra los componentes disponibles, "compose status" la escena activa y "compose stop" la desmonta. Distinto de "play"/"add"/"remove", que operan el motor actual.',
       forms: [
         { args: [{ name: "accion", type: "enum", values: ["status", "stop", "list"] }] },
+        {
+          args: [
+            { name: "accion", type: "enum", values: ["volume"] },
+            { name: "valor", type: "number", range: [0, 1] },
+          ],
+        },
         {
           args: [
             { name: "accion", type: "enum", values: ["source"] },
@@ -187,6 +193,10 @@ export function createCommandRegistry(
               section("Modifiers", listModifiers()),
             ].join("\n"),
           };
+        }
+
+        if (accion === "volume") {
+          return fromCompositionResult(composition.setMasterVolume(args.valor as number));
         }
 
         if (accion === "distance") {

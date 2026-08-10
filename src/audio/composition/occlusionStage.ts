@@ -45,18 +45,25 @@ const CROSSFADE_SECONDS = 1.2;
 const TRANSMISSION_HIGHPASS_HZ = 45;
 
 /**
- * Corte del pasa-altos que alimenta el banco resonante, en Hz.
+ * Corte del pasa-altos que alimenta el banco resonante, en Hz. Solo bloquea la
+ * continua.
  *
- * Lo que excita a la placa es el **impacto** de cada gota -- una fuerza
- * transitoria y de banda ancha -- no el campo acustico continuo de la masa de
- * lluvia. Alimentar los resonadores con la senal completa metia tambien la
- * capa `cuerpo`, un ruido continuo y sostenido, y un resonador alimentado sin
- * pausa deja de sonar a placa golpeada para sonar a tono. Filtrando por
- * encima de la banda del cuerpo, al banco le llega sobre todo el contenido
- * transitorio de `impactos` y `goteo`: cada golpe produce su repique y se
- * apaga, que es el fenomeno que se quiere.
+ * Una version anterior lo puso en 1.5 kHz con la idea de excitar la placa solo
+ * con el contenido transitorio y evitar que la capa continua `cuerpo` hiciera
+ * sonar los resonadores como un tono. La idea era razonable pero la
+ * implementacion se contradecia a si misma: los modos de estos panos estan
+ * entre 40 y 600 Hz, asi que quitar todo lo que hay por debajo de 1.5 kHz
+ * dejaba a los filtros de banda **sin energia en su banda de paso** y la
+ * respuesta propia de la barrera se volvia practicamente inaudible -- que es
+ * justo lo que se reporto al escuchar.
+ *
+ * Lo que evita el zumbido no es filtrar la excitacion, es el amortiguamiento:
+ * el `Q` derivado del factor de perdida instalado y el reparto de los modos
+ * por la banda (ver `resonancia-placa`). La excitacion se deja completa,
+ * porque un transitorio excita un modo precisamente por la energia que lleva
+ * *a la frecuencia de ese modo*.
  */
-const RESONANCE_EXCITATION_HIGHPASS_HZ = 1500;
+const RESONANCE_EXCITATION_HIGHPASS_HZ = 30;
 
 export class OcclusionStage {
   readonly input: GainNode;
@@ -71,6 +78,8 @@ export class OcclusionStage {
   private readonly excitationHighpass: BiquadFilterNode;
   private readonly resonanceGain: GainNode;
   private modeFilters: BiquadFilterNode[] = [];
+  /** Compensacion de la perdida de insercion del banco resonante (ver `rebuildResonance`). */
+  private resonanceCompensation = 1;
   private active: OcclusionDeclaration | null = null;
 
   constructor(context: BaseAudioContext) {
@@ -139,7 +148,11 @@ export class OcclusionStage {
     // exactamente (6 dB/octava desde el nivel correcto), por debajo se aplana
     // en vez de seguir subiendo. La dependencia con la masa vive entera en la
     // ganancia, asi que una barrera del doble de masa sigue atenuando 6 dB mas.
-    const { cutoffHz, gain: transmission, flankingGain } = massLawResponse(mass);
+    const {
+      cutoffHz,
+      gain: transmission,
+      flankingGain,
+    } = massLawResponse(mass, declaration.flankingFloorDb);
     this.massLawFilter.frequency.value = cutoffHz;
 
     this.rebuildResonance(declaration);
@@ -151,7 +164,7 @@ export class OcclusionStage {
     rampToValue(
       this.resonanceGain.gain,
       this.context,
-      declaration.resonance?.mix ?? 0,
+      (declaration.resonance?.mix ?? 0) * this.resonanceCompensation,
       CROSSFADE_SECONDS
     );
   }
@@ -172,6 +185,7 @@ export class OcclusionStage {
   private rebuildResonance(declaration: OcclusionDeclaration): void {
     for (const filter of this.modeFilters) filter.disconnect();
     this.modeFilters = [];
+    this.resonanceCompensation = 1;
 
     const resonance = declaration.resonance;
     if (!resonance) return;
@@ -182,6 +196,27 @@ export class OcclusionStage {
       resonance.modeCount,
       resonance.modalBandHz
     );
+    if (modes.length === 0) return;
+
+    // Compensacion de la perdida de insercion del banco.
+    //
+    // Un filtro de banda de Q alto solo deja pasar un sliver de espectro: su
+    // ancho de banda de ruido es (pi/2)*(f/Q), unos 9 Hz para un modo de
+    // 110 Hz con Q 12.5. Cuatro de esos suman ~160 Hz frente a los 22 kHz de
+    // la senal, asi que el banco entrega del orden de 20 dB menos que su
+    // entrada. Sin compensarlo, el `mix` declarado no significa lo que dice --
+    // y peor, cambiar el `Q` o el numero de modos alteraria el volumen de la
+    // barrera como efecto colateral de una decision sobre su timbre.
+    //
+    // Normalizando por el ancho de banda total del banco, `mix` pasa a ser lo
+    // que declara: el nivel de la respuesta radiada frente a la senal
+    // incidente, referido a una excitacion de espectro plano.
+    const nyquistHz = this.context.sampleRate / 2;
+    const totalNoiseBandwidthHz = modes.reduce(
+      (sum, mode) => sum + (Math.PI / 2) * (mode.frequencyHz / mode.q),
+      0
+    );
+    this.resonanceCompensation = Math.sqrt(nyquistHz / totalNoiseBandwidthHz);
 
     for (const mode of modes) {
       const filter = this.context.createBiquadFilter();

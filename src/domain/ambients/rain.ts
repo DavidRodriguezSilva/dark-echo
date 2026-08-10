@@ -53,6 +53,14 @@ export const rain: AmbientDeclaration = {
       // percibe como un disparo o laser en vez de un impacto de lluvia —
       // domina el transitorio de ruido.
       bubbleMix: 0.15,
+      // Centro de banda del impacto (synthesis-reference, `impacto-gota`,
+      // parametro `f_i`). Estaba declarado en la referencia desde el
+      // principio y no implementado: sin el, el transitorio salia como ruido
+      // blanco sin filtrar y el 46% de la energia de esta capa quedaba por
+      // encima de 10 kHz, con la respuesta plana hasta Nyquist. Se oia como
+      // un chisporroteo o fritura sobre la lluvia.
+      impactBandHz: 3500,
+      impactQ: 0.8,
       gain: 0.35,
     },
     goteo: {
@@ -68,6 +76,10 @@ export const rain: AmbientDeclaration = {
       // Menos densa que `impactos`: se permite algo mas de tono (mismo
       // razonamiento, umbral mas alto porque cada gota se oye por separado).
       bubbleMix: 0.25,
+      // Algo mas grave que `impactos`: una gota discernible de cerca tiene el
+      // transitorio menos brillante que la granulacion de fondo.
+      impactBandHz: 2800,
+      impactQ: 0.8,
       renderDurationSeconds: 0.05,
       gain: 0.5,
     },

@@ -59,6 +59,14 @@ export interface DropVoiceRange {
   bubbleProbability?: number;
   /** Peso de la burbuja frente al impacto en la mezcla final, en [0, 1]. Por defecto 0.5 (dsp/dropVoice.ts). */
   bubbleMix?: number;
+  /**
+   * Centro de banda del transitorio de impacto, en Hz (synthesis-reference,
+   * `impacto-gota`, parametro `f_i`; rango declarado 1500 - 6000). Sin
+   * declarar, el impacto sale como ruido de espectro completo.
+   */
+  impactBandHz?: number;
+  /** `Q` del pasa-banda del impacto; por defecto 1 (dsp/dropVoice.ts). */
+  impactQ?: number;
 }
 
 /**

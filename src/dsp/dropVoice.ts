@@ -1,5 +1,6 @@
 import type { Rng } from "./prng";
 import { whiteNoise } from "./noise";
+import { biquadBandpassCoefficients, createBiquadState, processBiquad } from "./coefficients";
 
 /**
  * Voz de gota (synthesis-reference, `impacto-gota`): dos sonidos sucesivos,
@@ -51,6 +52,23 @@ export interface DropVoiceOptions {
    * `rain.impactos`). Bajarlo deja dominar el transitorio de ruido.
    */
   bubbleMix?: number;
+  /**
+   * Centro de banda del transitorio de impacto, en Hz (`impacto-gota`,
+   * parametro `f_i`, rango declarado 1500 - 6000).
+   *
+   * El modelo describe el impacto como "un pulso de ruido pasado por un
+   * filtro pasa-banda de Q moderado", pero durante mucho tiempo el codigo
+   * emitio el ruido **sin filtrar**: el parametro estaba declarado en la
+   * referencia y no existia en la implementacion. Medido sobre el render
+   * real, eso dejaba el 46% de la energia de `rain.impactos` por encima de
+   * 10 kHz, con la respuesta plana hasta Nyquist -- ruido blanco puro -- y se
+   * oia como un chisporroteo o fritura superpuesto a la lluvia.
+   *
+   * Sin declarar, la voz se comporta como antes (ruido de espectro completo).
+   */
+  impactBandHz?: number;
+  /** `Q` del pasa-banda del impacto. "Moderado" segun el modelo. */
+  impactQ?: number;
   sampleRate: number;
 }
 
@@ -69,11 +87,21 @@ export function createDropVoice(rng: Rng, options: DropVoiceOptions): DropVoice 
     impactDurationSeconds,
     bubbleProbability = 1,
     bubbleMix = 0.5,
+    impactBandHz,
+    impactQ = 1,
     sampleRate,
   } = options;
 
   // Se decide una sola vez, al crear la voz: no toda gota arrastra burbuja.
   const hasBubble = rng() < bubbleProbability;
+
+  // El pasa-banda se aplica solo al transitorio de impacto, no a la burbuja:
+  // el modelo situa una y otra en registros distintos a proposito, para que
+  // se perciban como dos componentes de un mismo evento.
+  const impactFilter = impactBandHz
+    ? biquadBandpassCoefficients(impactBandHz, impactQ, sampleRate)
+    : null;
+  const impactFilterState = createBiquadState();
 
   let elapsed = 0;
   let bubblePhase = 0;
@@ -84,7 +112,10 @@ export function createDropVoice(rng: Rng, options: DropVoiceOptions): DropVoice 
 
     const impactEnvelope =
       t < impactDurationSeconds ? Math.exp(-t / (impactDurationSeconds / 3)) : 0;
-    const impact = whiteNoise(rng) * impactEnvelope;
+    const impactSource = whiteNoise(rng) * impactEnvelope;
+    const impact = impactFilter
+      ? processBiquad(impactFilterState, impactFilter, impactSource)
+      : impactSource;
 
     let bubble = 0;
     if (hasBubble) {

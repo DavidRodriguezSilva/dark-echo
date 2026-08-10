@@ -15,6 +15,8 @@ export interface SparseVoiceRanges {
   impactDurationRange: [number, number];
   bubbleProbability?: number;
   bubbleMix?: number;
+  impactBandHz?: number;
+  impactQ?: number;
   /** Duracion a renderizar por voz, en segundos: debe cubrir el decaimiento mas largo posible. */
   renderDurationSeconds: number;
 }
@@ -36,6 +38,8 @@ function renderDropVoiceBuffer(
     impactDurationSeconds: sampleRange(rng, ranges.impactDurationRange),
     bubbleProbability: ranges.bubbleProbability ?? 0.7,
     bubbleMix: ranges.bubbleMix,
+    impactBandHz: ranges.impactBandHz,
+    impactQ: ranges.impactQ,
     sampleRate: sampleRateHz,
   };
 

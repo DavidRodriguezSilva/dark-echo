@@ -55,6 +55,17 @@ export interface OcclusionDeclaration {
   /** Espesor de la barrera, en m. La variante gruesa del mismo material solo cambia esto. */
   thicknessMeters: number;
   /**
+   * Suelo de aislamiento por transmision indirecta de *esta instalacion*, en
+   * dB negativos (ver `FLANKING_FLOOR_DB`). Opcional: por defecto, el de una
+   * construccion ligera.
+   *
+   * Se declara por barrera y no globalmente porque describe como esta puesta,
+   * no de que esta hecha: una cubierta maciza pertenece a una construccion
+   * mejor sellada. Con un suelo unico para todo el catalogo, el camino
+   * indirecto dominaba siempre y el espesor de la barrera dejaba de oirse.
+   */
+  flankingFloorDb?: number;
+  /**
    * Superficies que el `Environment` activo debe contener para que esta
    * barrera tenga sentido posicional (design.md D6): un techo necesita que el
    * entorno tenga techo, no que sea del mismo material que el techo.

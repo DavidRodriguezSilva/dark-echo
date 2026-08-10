@@ -20,6 +20,9 @@ interface DenseGranularOptions {
   /** Probabilidad de que el impacto arrastre burbuja. Rango declarado: 0.5 - 0.85. */
   bubbleProbability?: number;
   bubbleMix?: number;
+  /** Centro de banda del transitorio de impacto, en Hz (`impacto-gota`, `f_i`). */
+  impactBandHz?: number;
+  impactQ?: number;
   /** Cuanto se mantiene una voz activa como maximo, en segundos. */
   voiceLifetimeSeconds?: number;
   maxVoices?: number;
@@ -48,6 +51,8 @@ class DenseGranularProcessor extends AudioWorkletProcessor {
   private readonly impactDurationRange: [number, number];
   private readonly bubbleProbability: number;
   private readonly bubbleMix: number | undefined;
+  private readonly impactBandHz: number | undefined;
+  private readonly impactQ: number | undefined;
   private readonly voiceLifetimeFrames: number;
   private readonly maxVoices: number;
 
@@ -65,6 +70,8 @@ class DenseGranularProcessor extends AudioWorkletProcessor {
     this.impactDurationRange = data.impactDurationRange ?? [0.001, 0.004];
     this.bubbleProbability = data.bubbleProbability ?? 0.7;
     this.bubbleMix = data.bubbleMix;
+    this.impactBandHz = data.impactBandHz;
+    this.impactQ = data.impactQ;
     this.voiceLifetimeFrames = Math.round((data.voiceLifetimeSeconds ?? 0.05) * sampleRate);
     this.maxVoices = data.maxVoices ?? 24;
 
@@ -80,6 +87,8 @@ class DenseGranularProcessor extends AudioWorkletProcessor {
       impactDurationSeconds: sampleRange(this.rng, this.impactDurationRange),
       bubbleProbability: this.bubbleProbability,
       bubbleMix: this.bubbleMix,
+      impactBandHz: this.impactBandHz,
+      impactQ: this.impactQ,
       sampleRate,
     });
     const pan = this.rng() * 2 - 1;

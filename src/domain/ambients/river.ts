@@ -54,6 +54,13 @@ export const river: AmbientDeclaration = {
       pitchDrift: 0.05,
       impactDurationRange: [0.002, 0.005],
       bubbleProbability: 0.8,
+      // Centro de banda del impacto (`impacto-gota`, parametro `f_i`), por la
+      // misma razon que en `rain`: el modelo lo declara y el codigo emitia el
+      // transitorio como ruido de espectro completo. Mas grave que el de
+      // `rain` porque el burbujeo de una corriente es de radios mayores y
+      // registro mas bajo.
+      impactBandHz: 2500,
+      impactQ: 0.8,
       gain: 0.4,
     },
   },

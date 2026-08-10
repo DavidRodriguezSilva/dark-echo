@@ -5,12 +5,17 @@ import { rampToValue } from "../transitions";
 /**
  * Etapa de `Modifier` de distancia (capacidad `ambient-modifiers`).
  *
- *   input → airAbsorptionFilter → distanceGain → output
+ *   input ─┬→ bypassGain ───────────────────────────→ output
+ *          └→ airAbsorptionFilter → distanceGain ───→ output
  *
- * A diferencia de las otras dos etapas, esta no necesita un camino de
- * derivacion: su estado neutro ya es transparente (ganancia 1, corte por
- * encima de la banda audible), asi que activarla y desactivarla es mover sus
- * dos parametros, no cruzar caminos.
+ * El camino de derivacion no es decorativo: un biquad "transparente" no lo es.
+ * La primera version dejaba el pasa-bajos permanentemente en la cadena con su
+ * corte en 20 kHz -- un 0.9 de Nyquist a 44.1 kHz --, donde la distorsion de
+ * fase de un biquad es grande aunque su magnitud sea plana. Medido sobre el
+ * render real, con el `Modifier` *inactivo* eso ya subia el pico y el factor
+ * de cresta un 13% a igual RMS, y dejaba una senal de diferencia a -21.9 dB
+ * frente a la cadena directa. Una etapa inactiva tiene que ser
+ * bit-transparente, no casi transparente.
  *
  * Eso es tambien lo que la hace **autocontenida** en el sentido que exige la
  * capacidad: mover la distancia en el tiempo es rampar estos dos parametros,
@@ -31,6 +36,7 @@ export class ModifierStage {
   readonly output: GainNode;
 
   private readonly context: BaseAudioContext;
+  private readonly bypassGain: GainNode;
   private readonly airAbsorptionFilter: BiquadFilterNode;
   private readonly distanceGain: GainNode;
   private active: DistanceModifierDeclaration | null = null;
@@ -41,13 +47,18 @@ export class ModifierStage {
 
     this.input = context.createGain();
     this.output = context.createGain();
+    this.bypassGain = context.createGain();
+    this.bypassGain.gain.value = 1;
     this.distanceGain = context.createGain();
-    this.distanceGain.gain.value = 1;
+    this.distanceGain.gain.value = 0;
 
     this.airAbsorptionFilter = context.createBiquadFilter();
     this.airAbsorptionFilter.type = "lowpass";
     this.airAbsorptionFilter.Q.value = 0.5;
     this.airAbsorptionFilter.frequency.value = this.transparentCutoffHz();
+
+    this.input.connect(this.bypassGain);
+    this.bypassGain.connect(this.output);
 
     this.input.connect(this.airAbsorptionFilter);
     this.airAbsorptionFilter.connect(this.distanceGain);
@@ -69,6 +80,7 @@ export class ModifierStage {
 
   activate(declaration: DistanceModifierDeclaration, meters?: number): void {
     this.active = declaration;
+    rampToValue(this.bypassGain.gain, this.context, 0, RAMP_SECONDS);
     this.setDistance(meters ?? declaration.defaultMeters);
   }
 
@@ -101,7 +113,8 @@ export class ModifierStage {
   deactivate(): void {
     this.active = null;
     this.currentMeters = 0;
-    rampToValue(this.distanceGain.gain, this.context, 1, RAMP_SECONDS);
+    rampToValue(this.bypassGain.gain, this.context, 1, RAMP_SECONDS);
+    rampToValue(this.distanceGain.gain, this.context, 0, RAMP_SECONDS);
     rampToValue(
       this.airAbsorptionFilter.frequency,
       this.context,
@@ -112,6 +125,7 @@ export class ModifierStage {
 
   dispose(): void {
     this.input.disconnect();
+    this.bypassGain.disconnect();
     this.airAbsorptionFilter.disconnect();
     this.distanceGain.disconnect();
     this.output.disconnect();
