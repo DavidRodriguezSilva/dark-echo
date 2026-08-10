@@ -113,6 +113,19 @@ export function Console({
     followingRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < FOLLOW_THRESHOLD_PX;
   }
 
+  // Un clic en cualquier parte de la consola —la salida, el listado de
+  // `help`, las sugerencias— devuelve el foco a la linea de entrada: en una
+  // terminal el punto de escritura es siempre el mismo, sin importar donde
+  // se haya hecho clic. La excepcion es un clic que deja texto
+  // seleccionado, porque ese clic era para copiar y enfocar la entrada
+  // descartaria la seleccion.
+  function handleConsoleMouseUp(event: React.MouseEvent) {
+    if (event.target === inputRef.current) return;
+    const selection = window.getSelection();
+    if (selection && !selection.isCollapsed) return;
+    inputRef.current?.focus();
+  }
+
   function updateValue(next: string) {
     setValue(next);
     setSuggestions(autocomplete(next, registry).candidates);
@@ -167,7 +180,7 @@ export function Console({
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col">
+    <section className="flex min-h-0 flex-1 flex-col" onMouseUp={handleConsoleMouseUp}>
       <div
         ref={outputRef}
         onScroll={handleScroll}
