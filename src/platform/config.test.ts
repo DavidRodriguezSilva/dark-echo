@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_CONFIG, readConfig, writeConfig } from "./config";
+import { writeToStorage } from "./storage";
 import { SystemNoticeStore } from "./systemNotices";
 
 function installFakeLocalStorage(): Map<string, string> {
@@ -24,8 +25,24 @@ describe("readConfig / writeConfig", () => {
   });
 
   it("restaura el volumen maestro guardado en una sesion anterior", () => {
-    writeConfig({ masterVolume: 0.75 });
-    expect(readConfig()).toEqual({ masterVolume: 0.75 });
+    writeConfig({ masterVolume: 0.75, interfaceMode: "console" });
+    expect(readConfig()).toEqual({ masterVolume: 0.75, interfaceMode: "console" });
+  });
+
+  it("restaura el modo de interfaz elegido por el usuario", () => {
+    writeConfig({ masterVolume: 0.5, interfaceMode: "visual" });
+    expect(readConfig().interfaceMode).toBe("visual");
+  });
+
+  it("migra una configuracion v1 conservando el volumen maestro", () => {
+    // Sin la migracion declarada, `readVersioned` descartaria el registro y
+    // el usuario perderia su volumen: es lo que este caso protege.
+    writeToStorage("dark-echo.config", 1, { masterVolume: 0.9 });
+
+    const config = readConfig();
+
+    expect(config.masterVolume).toBe(0.9);
+    expect(config.interfaceMode).toBeDefined();
   });
 
   it("ante datos corruptos, arranca con valores por defecto e informa una vez", () => {
@@ -45,8 +62,8 @@ describe("readConfig / writeConfig", () => {
     });
     const notices = new SystemNoticeStore();
 
-    writeConfig({ masterVolume: 0.5 }, notices);
-    writeConfig({ masterVolume: 0.6 }, notices);
+    writeConfig({ masterVolume: 0.5, interfaceMode: "console" }, notices);
+    writeConfig({ masterVolume: 0.6, interfaceMode: "console" }, notices);
 
     expect(notices.getSnapshot()).toHaveLength(1);
   });

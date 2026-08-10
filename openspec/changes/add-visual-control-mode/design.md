@@ -236,11 +236,24 @@ que una clave nueva solo añadiría un sobre, una lectura y un modo de fallo má
 un usuario táctil a conmutar en cada arranque, que es precisamente el usuario
 para el que se hace este change.
 
-**Resolución de la tensión con "consola por defecto"**: el valor por defecto
-—el que se aplica sin preferencia registrada, en el primer arranque y tras un
-descarte de datos— es `"console"`. Una vez el usuario conmuta, su elección
-manda. Las dos afirmaciones del propietario se sostienen a la vez porque hablan
-de momentos distintos.
+**El valor por defecto lo decide el dispositivo, no una constante.** Sin
+preferencia registrada —primer arranque, o tras un descarte de datos— el modo
+inicial es **visual en un dispositivo táctil y consola en uno de escritorio**.
+La razón es que la consola exige un teclado físico para ser usable, y en un
+móvil ese teclado ocupa media pantalla y no tiene tecla de tabulación para el
+autocompletado: arrancar ahí en consola es arrancar en el modo peor. Una vez el
+usuario conmuta, **su elección manda siempre**, en cualquier dispositivo: la
+detección solo elige el punto de partida, nunca sobreescribe una preferencia.
+
+La detección se hace con `matchMedia("(pointer: coarse)")`, no con el ancho de
+la ventana ni con el `userAgent`. Lo que importa no es el tamaño de la pantalla
+sino si el puntero es un dedo: una tableta grande sigue queriendo el modo
+visual, y una ventana estrecha en un escritorio con ratón no. `userAgent` se
+descarta por el motivo habitual —es una cadena que miente— y porque no dice
+nada del método de entrada real.
+
+Si `matchMedia` no existe (entorno sin DOM, como los tests en Node), el modo
+por defecto es consola.
 
 ### D6 — El modo vive en un store observable de `platform/`, no en `useState`
 
@@ -257,6 +270,35 @@ leerlo sin encadenar props; y un futuro comando `mode` podría fijarlo sin que
 **Alternativa descartada**: mantener `useState` en `App.tsx` y escribir la
 configuración en un `useEffect`. Funciona hoy y no funcionaría en cuanto algo
 que no sea un componente necesite cambiar el modo.
+
+### D12 — La apariencia se consume por contexto de React, no encadenando props
+
+Hoy `AppearanceStore` viaja como prop desde `App.tsx` hasta `StatusBar` y
+`TouchControls`. Con el modo visual el problema crece: tema y esquema hacen
+falta en la sección de apariencia, en el conmutador y en los selectores, todos
+a distinta profundidad del árbol. Encadenar la prop por cada nivel intermedio
+—que no la usa— es exactamente el caso para el que existe el contexto.
+
+Se añade `src/ui/AppearanceContext.tsx` con un proveedor que envuelve la
+aplicación y un hook `useAppearance()` que devuelve la preferencia vigente y el
+`set`. El hook hace `useSyncExternalStore` sobre el store una sola vez, así que
+el contrato de "el estado mostrado no puede divergir del real" se conserva: el
+contexto transporta el store, no una copia de su valor.
+
+El store en sí **no cambia**. Sigue en `platform/appearance.ts`, sigue siendo la
+fuente de verdad y sigue escribiéndose en `localStorage` desde un script
+síncrono de `index.html` para evitar el parpadeo de tema en el primer dibujado.
+El contexto es solo la vía de acceso desde React.
+
+**Alternativa descartada**: un contexto que guarde el valor en `useState` y
+sincronice con el store en un `useEffect`. Introduce una segunda copia del
+estado y, con ella, la posibilidad de que el selector muestre un tema y el
+documento tenga otro — el mismo fallo de clase que D3 de `retire-legacy-engine`
+evita en el motor.
+
+**Alternativa descartada**: seguir pasando props. Funciona con dos consumidores
+y se vuelve ruido con seis, sobre todo cuando los niveles intermedios existen
+solo por la maquetación.
 
 ### D7 — El modo visual no guarda copia del estado de la escena
 

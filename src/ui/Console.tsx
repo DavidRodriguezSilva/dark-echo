@@ -19,17 +19,39 @@ const FOLLOW_THRESHOLD_PX = 16;
 const STARTER_COMMAND = "play rain";
 
 interface OutputLine {
-  kind: "echo" | "response" | "error";
+  kind: "echo" | "response" | "error" | "title" | "lead";
   text: string;
 }
 
+/**
+ * Pantalla de inicio, en el orden que pidió el propietario: el nombre de la
+ * aplicación en tipografía grande, la bienvenida, la descripción —que es donde
+ * se menciona cómo pasar a la interfaz gráfica— y, por último, la ayuda.
+ *
+ * Ya no se dice que se controla "escribiendo comandos, como en una terminal":
+ * se ve que lo es, así que decirlo gastaba una línea sin informar.
+ */
 const WELCOME_LINES: OutputLine[] = [
-  "dark-echo genera ambientes sonoros procedurales —lluvia, viento, río y mar— completamente offline, sin grabaciones.",
-  '"play", "add" y "remove" gobiernan qué suena; "compose" dónde suena: el recinto, la barrera y la distancia.',
-  'Cada orden te sugiere qué podés combinar a continuación. Escribí "help" para la lista completa.',
-].map((text) => ({ kind: "response", text }));
+  { kind: "title", text: "dark-echo" },
+  { kind: "lead", text: "Bienvenido." },
+  {
+    kind: "response",
+    text: "Genera ambientes sonoros procedurales —lluvia, viento, río y mar— completamente offline, sin grabaciones ni conexión.",
+  },
+  {
+    kind: "response",
+    text: '"play", "add" y "remove" gobiernan qué suena; "compose", dónde suena: el recinto, la barrera y la distancia. Cada orden te sugiere qué puedes combinar a continuación.',
+  },
+  {
+    kind: "response",
+    text: "Si prefieres controlarlo con una interfaz gráfica, pulsa el botón de abajo a la derecha.",
+  },
+  { kind: "response", text: 'Escribe "help" para ver la lista completa de comandos.' },
+];
 
 function lineClassName(kind: OutputLine["kind"]): string {
+  if (kind === "title") return "text-4xl font-bold tracking-tight text-foreground sm:text-6xl";
+  if (kind === "lead") return "text-base text-foreground";
   if (kind === "echo") return "font-semibold text-terminal-echo";
   if (kind === "error") return "text-terminal-error";
   return "text-terminal-response";

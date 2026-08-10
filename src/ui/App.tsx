@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { CompositionEngine } from "../audio/composition/compositionEngine";
 import { AppearanceStore } from "../platform/appearance";
 import { listThemes } from "../domain/themes";
@@ -11,16 +11,17 @@ import {
 import { SystemNoticeStore } from "../platform/systemNotices";
 import { readConfig, writeConfig } from "../platform/config";
 import { readLastMix, writeLastMix } from "../platform/lastMix";
+import { InterfaceModeStore } from "../platform/interfaceMode";
 import { SceneStore } from "../platform/sceneStore";
 import type { UpdateStore } from "../platform/update";
 import { BootSplash } from "./BootSplash";
 import { Console } from "./Console";
 import { StatusBar } from "./StatusBar";
-import { TouchControls } from "./TouchControls";
+import { VisualControls } from "./VisualControls";
+import { AppearanceProvider } from "./AppearanceContext";
 
 export function App({ updateStore }: { updateStore: UpdateStore }) {
   const [booted, setBooted] = useState(false);
-  const [controlsVisible, setControlsVisible] = useState(false);
   const noticesRef = useRef<SystemNoticeStore | null>(null);
   if (!noticesRef.current) {
     noticesRef.current = new SystemNoticeStore();
@@ -37,6 +38,11 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     appearanceRef.current = new AppearanceStore();
   }
 
+  const modeRef = useRef<InterfaceModeStore | null>(null);
+  if (!modeRef.current) {
+    modeRef.current = new InterfaceModeStore(notices);
+  }
+
   const compositionRef = useRef<CompositionEngine | null>(null);
   if (!compositionRef.current) {
     const config = readConfig(notices);
@@ -47,14 +53,11 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     });
   }
 
-  const registryRef = useRef<ReturnType<typeof createCommandRegistry> | null>(null);
-  if (!registryRef.current) {
-    const appearanceController: AppearanceController = {
-      list: () => listThemes(),
-      getCurrent: () => appearanceRef.current!.getSnapshot(),
-      set: (preference) => appearanceRef.current!.set(preference),
-    };
-    const sceneController: SceneController = {
+  // El controlador de escenas se comparte entre la consola (via el registro de
+  // comandos) y el modo visual: una sola persistencia, dos superficies.
+  const sceneControllerRef = useRef<SceneController | null>(null);
+  if (!sceneControllerRef.current) {
+    sceneControllerRef.current = {
       list: () => sceneStoreRef.current!.list(),
       save: (name, overwrite) => {
         const composition = compositionRef.current!.getComposition();
@@ -92,6 +95,15 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
           : { ok: false, message: `No existe la escena "${name}".` };
       },
     };
+  }
+
+  const registryRef = useRef<ReturnType<typeof createCommandRegistry> | null>(null);
+  if (!registryRef.current) {
+    const appearanceController: AppearanceController = {
+      list: () => listThemes(),
+      getCurrent: () => appearanceRef.current!.getSnapshot(),
+      set: (preference) => appearanceRef.current!.set(preference),
+    };
     const updateController: UpdateController = {
       isAvailable: () => updateStore.getSnapshot(),
       apply: () => updateStore.apply(),
@@ -99,7 +111,7 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     registryRef.current = createCommandRegistry(
       compositionRef.current,
       appearanceController,
-      sceneController,
+      sceneControllerRef.current,
       updateController
     );
   }
@@ -113,7 +125,11 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     const engine = compositionRef.current!;
     const persist = () => {
       const snapshot = engine.getSnapshot();
-      writeConfig({ masterVolume: snapshot.masterVolume }, notices);
+      // Se relee la configuracion en vez de recordar una copia: el modo de
+      // interfaz lo escribe `InterfaceModeStore` por su lado, y escribir aqui
+      // un objeto construido de cero lo revertiria en cada cambio de volumen.
+      const config = readConfig(notices);
+      writeConfig({ ...config, masterVolume: snapshot.masterVolume }, notices);
       writeLastMix(engine.getComposition(), notices);
     };
     return engine.subscribe(persist);
@@ -138,22 +154,62 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     });
   }, [updateStore, notices]);
 
+  return (
+    <AppearanceProvider store={appearanceRef.current}>
+      <AppShell
+        booted={booted}
+        onBooted={() => setBooted(true)}
+        engine={compositionRef.current}
+        registry={registryRef.current}
+        notices={notices}
+        modeStore={modeRef.current}
+        scenes={sceneControllerRef.current}
+      />
+    </AppearanceProvider>
+  );
+}
+
+/**
+ * Cuerpo de la aplicación, separado de `App` porque consume el contexto de
+ * apariencia que `App` provee — un componente no puede leer un contexto que
+ * él mismo monta.
+ *
+ * Los dos modos son **excluyentes**: el visual no es un panel que se superpone
+ * a la consola, es la otra mitad del conmutador. El modo inicial lo decide el
+ * dispositivo (`platform/config.ts`), y en cuanto el usuario conmuta, su
+ * elección queda registrada y manda.
+ */
+function AppShell({
+  booted,
+  onBooted,
+  engine,
+  registry,
+  notices,
+  modeStore,
+  scenes,
+}: {
+  booted: boolean;
+  onBooted: () => void;
+  engine: CompositionEngine;
+  registry: ReturnType<typeof createCommandRegistry>;
+  notices: SystemNoticeStore;
+  modeStore: InterfaceModeStore;
+  scenes: SceneController;
+}) {
+  const mode = useSyncExternalStore(modeStore.subscribe, modeStore.getSnapshot);
+
   if (!booted) {
-    return <BootSplash onDone={() => setBooted(true)} />;
+    return <BootSplash onDone={onBooted} />;
   }
 
   return (
     <main className="flex h-dvh w-full flex-col">
-      <Console registry={registryRef.current} notices={notices} />
-      {controlsVisible && (
-        <TouchControls engine={compositionRef.current} appearance={appearanceRef.current} />
+      {mode === "console" ? (
+        <Console registry={registry} notices={notices} />
+      ) : (
+        <VisualControls engine={engine} scenes={scenes} notices={notices} />
       )}
-      <StatusBar
-        engine={compositionRef.current}
-        appearance={appearanceRef.current}
-        controlsVisible={controlsVisible}
-        onToggleControls={() => setControlsVisible((visible) => !visible)}
-      />
+      <StatusBar engine={engine} mode={mode} onToggleMode={() => modeStore.toggle()} />
     </main>
   );
 }
