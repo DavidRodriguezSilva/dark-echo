@@ -4,7 +4,14 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+// Sin dominio propio, GitHub Pages sirve el sitio bajo /dark-echo/, no en la
+// raiz del origen (openspec/changes/add-github-pages-deploy). `deploy.yml`
+// fija VITE_BASE_PATH en el build; en desarrollo local no hay variable y la
+// base es la raiz.
+const base = process.env.VITE_BASE_PATH ?? "/";
+
 export default defineConfig({
+  base,
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
@@ -43,21 +50,21 @@ export default defineConfig({
         background_color: "#0e1217",
         display: "standalone",
         orientation: "portrait",
-        scope: "/",
-        start_url: "/",
+        scope: base,
+        start_url: base,
         icons: [
           {
-            src: "/pwa-192x192.png",
+            src: `${base}pwa-192x192.png`,
             sizes: "192x192",
             type: "image/png",
           },
           {
-            src: "/pwa-512x512.png",
+            src: `${base}pwa-512x512.png`,
             sizes: "512x512",
             type: "image/png",
           },
           {
-            src: "/pwa-512x512-maskable.png",
+            src: `${base}pwa-512x512-maskable.png`,
             sizes: "512x512",
             type: "image/png",
             purpose: "maskable",
