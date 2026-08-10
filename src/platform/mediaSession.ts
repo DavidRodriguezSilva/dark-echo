@@ -97,6 +97,18 @@ export function setupMediaSession(engine: CompositionEngine): () => void {
           ],
         })
       : null;
+
+    // El beacon dura FOCUS_BEACON_SECONDS de verdad (offline-playback,
+    // "Aplicación instalable"): sin esto, Android infiere esa duración real
+    // del elemento y dibuja una barra de progreso de 10s en bucle, con
+    // gesto de avance/retroceso que no mueve nada real — dark echo no tiene
+    // pistas ni posición que adelantar. `Infinity` es el valor que la propia
+    // API reserva para "sin fin definido", como una transmisión en vivo.
+    if (sounding) {
+      session.setPositionState({ duration: Infinity, position: 0, playbackRate: 1 });
+    } else {
+      session.setPositionState();
+    }
   };
 
   session.setActionHandler("play", () => void engine.play());
@@ -113,6 +125,7 @@ export function setupMediaSession(engine: CompositionEngine): () => void {
     session.setActionHandler("stop", null);
     session.metadata = null;
     session.playbackState = "none";
+    session.setPositionState();
     focusBeacon.pause();
     URL.revokeObjectURL(focusBeaconUrl);
   };

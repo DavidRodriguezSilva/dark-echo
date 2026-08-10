@@ -28,8 +28,12 @@ function installFakeMediaSession() {
   const session = {
     playbackState: "none" as string,
     metadata: null as unknown,
+    positionState: null as { duration: number; position: number; playbackRate: number } | null,
     setActionHandler: (action: string, handler: (() => void) | null) =>
       handlers.set(action, handler),
+    setPositionState: (state?: { duration: number; position: number; playbackRate: number }) => {
+      session.positionState = state ?? null;
+    },
   };
   vi.stubGlobal("navigator", { mediaSession: session });
   vi.stubGlobal(
@@ -102,6 +106,7 @@ describe("setupMediaSession", () => {
     expect((session.metadata as { init: { title: string } }).init.title).toBe("Lluvia + Viento");
     expect(audioInstances[0].paused).toBe(false);
     expect(audioInstances[0].loop).toBe(true);
+    expect(session.positionState?.duration).toBe(Infinity);
   });
 
   it("suspendido por el entorno se refleja como pausado, no como sonando", () => {
@@ -121,6 +126,7 @@ describe("setupMediaSession", () => {
 
     expect(session.playbackState).toBe("none");
     expect(session.metadata).toBeNull();
+    expect(session.positionState).toBeNull();
     expect(audioInstances[0].paused).toBe(true);
   });
 
@@ -157,6 +163,7 @@ describe("setupMediaSession", () => {
 
     expect(session.metadata).toBeNull();
     expect(session.playbackState).toBe("none");
+    expect(session.positionState).toBeNull();
     expect(handlers.get("play")).toBeNull();
     expect(handlers.get("pause")).toBeNull();
     expect(handlers.get("stop")).toBeNull();
