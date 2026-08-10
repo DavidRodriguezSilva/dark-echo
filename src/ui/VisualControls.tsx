@@ -24,10 +24,13 @@ import { cn } from "./lib/utils";
 
 /**
  * Modo visual (`command-console`, "Organización del modo visual según la
- * jerarquía de composición"): la disposición sigue el recorrido de la señal
- * hasta el oyente — qué suena → distancia → barrera → recinto → el
- * transporte y el volumen, que viven en la barra de reproducción en curso
- * (`StatusBar`), no aquí (`update-interface-design`, design.md D6/D7).
+ * jerarquía de composición"): qué suena → distancia → recinto → barrera →
+ * el transporte y el volumen, que viven en la barra de reproducción en
+ * curso (`StatusBar`), no aquí (`update-interface-design`, design.md
+ * D6/D7). Recinto antes que barrera, y no el orden de la señal, porque la
+ * afinidad de la barrera se calcula *contra* el recinto elegido
+ * (`scoreOcclusionAgainstEnvironment`): sin recinto todavía, cualquier
+ * barrera se ve poco afín sin motivo real.
  *
  * Ningún control guarda su propio valor: todos leen del snapshot del motor
  * y escriben llamando al motor, así que lo que se ve no puede diferir de lo
@@ -52,7 +55,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** Fila de selección exclusiva para la barrera o el recinto (design.md D6). */
+/** Fila de selección exclusiva para el recinto o la barrera (design.md D6). */
 function ExclusiveRow({
   label,
   noneLabel,
@@ -390,6 +393,16 @@ export function VisualControls({
           <SectionTitle>Cómo suena</SectionTitle>
 
           <ExclusiveRow
+            label="Recinto"
+            noneLabel="Ninguno"
+            activeId={environment?.id ?? null}
+            options={listEnvironments().map((item) => ({ ...item, lowAffinity: false }))}
+            onSelect={(id) =>
+              id === null ? engine.deactivateEnvironment() : void engine.activateEnvironment(id)
+            }
+          />
+
+          <ExclusiveRow
             label="Barrera"
             noneLabel="Ninguna"
             activeId={occlusion?.id ?? null}
@@ -406,16 +419,6 @@ export function VisualControls({
             })}
             onSelect={(id) =>
               id === null ? engine.deactivateOcclusion() : void engine.activateOcclusion(id)
-            }
-          />
-
-          <ExclusiveRow
-            label="Recinto"
-            noneLabel="Ninguno"
-            activeId={environment?.id ?? null}
-            options={listEnvironments().map((item) => ({ ...item, lowAffinity: false }))}
-            onSelect={(id) =>
-              id === null ? engine.deactivateEnvironment() : void engine.activateEnvironment(id)
             }
           />
         </section>
