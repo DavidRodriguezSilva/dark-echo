@@ -12,6 +12,7 @@ import { SystemNoticeStore } from "../platform/systemNotices";
 import { readConfig, writeConfig } from "../platform/config";
 import { readLastMix, writeLastMix } from "../platform/lastMix";
 import { InterfaceModeStore } from "../platform/interfaceMode";
+import { setupMediaSession } from "../platform/mediaSession";
 import { SceneStore } from "../platform/sceneStore";
 import type { UpdateStore } from "../platform/update";
 import { BootSplash } from "./BootSplash";
@@ -147,6 +148,13 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     };
     return engine.subscribe(persist);
   }, [notices]);
+
+  // Controles del sistema en Android/notificacion (offline-playback,
+  // "Aplicacion instalable"): se registran una sola vez, con el motor como
+  // unica fuente de verdad de lo que suena.
+  useEffect(() => {
+    return setupMediaSession(compositionRef.current!);
+  }, []);
 
   // Actualizacion no disruptiva (offline-playback): la decision se toma en
   // el instante en que se detecta la version nueva, mirando si hay alguna

@@ -467,10 +467,10 @@ Conmutar de modo MUST NOT alterar el estado de la reproducción: ninguna capa SH
 
 ### Requirement: Organización del modo visual según la jerarquía de composición
 
-El modo visual SHALL disponer sus secciones siguiendo **el recorrido de la señal hasta el oyente**, y no como una lista de ajustes independientes: qué `Source` suenan, con qué `Modifiers` cada uno, tras qué `Occlusion`, dentro de qué `Environment`, y finalmente el transporte y el volumen maestro. La disposición SHALL hacer distinguible, sin texto explicativo adicional, qué alcance tiene cada control:
+El modo visual SHALL disponer sus secciones siguiendo la jerarquía de composición, y no como una lista de ajustes independientes: qué `Source` suenan, con qué `Modifiers` cada uno, dentro de qué `Environment`, tras qué `Occlusion`, y finalmente el transporte y el volumen maestro. La disposición SHALL hacer distinguible, sin texto explicativo adicional, qué alcance tiene cada control:
 
 - Un `Modifier` SHALL presentarse **dentro** de la representación del `Source` al que pertenece, de modo que quede claro que solo afecta a ese `Source`.
-- La `Occlusion` y el `Environment` SHALL presentarse como componentes **de la escena**, gobernando a todos los `Source` activos a la vez, y como selección exclusiva —como mucho uno activo de cada uno—.
+- La `Occlusion` y el `Environment` SHALL presentarse como componentes **de la escena**, gobernando a todos los `Source` activos a la vez, y como selección exclusiva —como mucho uno activo de cada uno—. El `Environment` SHALL presentarse antes que la `Occlusion`: la afinidad de la `Occlusion` se calcula contra el `Environment` elegido, así que sin uno todavía cualquier `Occlusion` se vería poco afín sin motivo real.
 - El transporte —reproducir y detener— y el volumen maestro SHALL situarse al final del recorrido y SHALL permanecer alcanzables sin desplazar la vista.
 
 La sección de `Source` SHALL presentar el catálogo completo como una rejilla de elementos seleccionables de tamaño uniforme, y SHALL distinguir visualmente un `Source` disponible de uno activo. El detalle de un `Source` activo —sus capas y sus `Modifiers`— SHALL presentarse asociado a él, y MUST NOT presentarse para los `Source` que no estén activos.
@@ -483,10 +483,10 @@ Los componentes ofrecidos en cada sección SHALL derivarse de los catálogos dec
 
 Toda acción del modo visual SHALL producir exactamente el mismo efecto que su comando equivalente, invocando la misma operación del motor.
 
-#### Scenario: El orden de las secciones es el recorrido de la señal
+#### Scenario: El orden de las secciones sigue la jerarquía de composición
 
 - **WHEN** el usuario recorre el modo visual de arriba abajo
-- **THEN** encuentra primero qué suena, después lo que modifica cada sonido, después la barrera y el recinto de la escena, y por último el transporte y el volumen maestro
+- **THEN** encuentra primero qué suena, después lo que modifica cada sonido, después el recinto y la barrera de la escena, y por último el transporte y el volumen maestro
 
 #### Scenario: El alcance de un `Modifier` es legible
 
