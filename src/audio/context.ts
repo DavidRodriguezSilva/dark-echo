@@ -31,7 +31,7 @@ const WORKLET_MODULE_URLS = [
 ];
 
 export type AudioContextResult =
-  { ok: true; context: AudioContext } | { ok: false; reason: string };
+  { ok: true; context: AudioContext; output: AudioNode } | { ok: false; reason: string };
 
 export function isAudioWorkletSupported(): boolean {
   return typeof AudioContext !== "undefined" && "audioWorklet" in AudioContext.prototype;
@@ -39,6 +39,32 @@ export function isAudioWorkletSupported(): boolean {
 
 let sharedContext: AudioContext | null = null;
 let modulesLoaded: Promise<void> | null = null;
+let focusBeacon: MediaStreamAudioDestinationNode | null = null;
+
+/**
+ * Web Audio API no pide el "audio focus" de Android por razones historicas:
+ * sin el, Chrome nunca reconoce la pestana como reproduciendo "media" real,
+ * y la notificacion de Media Session (`platform/mediaSession.ts`) no
+ * aparece nunca -- aunque el sonido si se escuche por los parlantes.
+ *
+ * El unico arreglo documentado es que la salida real pase por un elemento
+ * `<audio>` genuino. Por eso el motor conecta su grafo aqui, al destino de
+ * este `MediaStreamAudioDestinationNode`, y no en paralelo a
+ * `context.destination` -- eso duplicaria el sonido (una vez por los
+ * parlantes directo, otra vez por el elemento oculto).
+ *
+ * Referencia: https://developer.chrome.com/blog/media-notifications
+ */
+function createFocusBeacon(context: AudioContext): MediaStreamAudioDestinationNode {
+  const destination = context.createMediaStreamDestination();
+  const audio = new Audio();
+  audio.srcObject = destination.stream;
+  void audio.play().catch(() => {
+    // Puede rechazar sin gesto del usuario todavia; getAudioContext() solo
+    // se llama en respuesta a uno, asi que para entonces ya hubo uno.
+  });
+  return destination;
+}
 
 /**
  * Obtiene el contexto de audio compartido, creandolo y cargando sus modulos
@@ -60,6 +86,10 @@ export async function getAudioContext(): Promise<AudioContextResult> {
   }
   const context = sharedContext;
 
+  if (!focusBeacon) {
+    focusBeacon = createFocusBeacon(context);
+  }
+
   if (!modulesLoaded) {
     modulesLoaded = Promise.all(
       WORKLET_MODULE_URLS.map((url) => context.audioWorklet.addModule(url))
@@ -78,7 +108,7 @@ export async function getAudioContext(): Promise<AudioContextResult> {
     await context.resume();
   }
 
-  return { ok: true, context };
+  return { ok: true, context, output: focusBeacon };
 }
 
 /** Solo para tests: descarta el contexto compartido entre ejemplos. */
@@ -86,6 +116,7 @@ export function resetAudioContextForTests(): void {
   const previous = sharedContext;
   sharedContext = null;
   modulesLoaded = null;
+  focusBeacon = null;
 
   // Cerrarlo de verdad, no solo soltar la referencia: el navegador limita
   // cuantos `AudioContext` pueden coexistir, y una suite que crea uno por
