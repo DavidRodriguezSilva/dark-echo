@@ -1,5 +1,6 @@
 import type { CompositionEngine } from "../audio/composition/compositionEngine";
 import { findAmbient } from "../domain/catalog";
+import type { Scene } from "../domain/scene";
 
 /**
  * Duración del silencio del beacon de audio focus. Chrome en Android solo
@@ -63,15 +64,27 @@ export function setupMediaSession(engine: CompositionEngine): () => void {
   const focusBeacon = new Audio(focusBeaconUrl);
   focusBeacon.loop = true;
 
-  const title = (sourceIds: string[]): string =>
-    sourceIds.length > 0
+  // Deriva el titulo de la escena vigente, no de `snapshot.sources`: esa
+  // lista sale de los `Source` activos del motor y queda vacia justo cuando
+  // hace falta el titulo -- en pausa (`stop()` conserva la escena pero
+  // retira los `Source` activos). `getComposition()` sirve para ambos casos,
+  // sonando o conservada.
+  const title = (scene: Scene | null): string => {
+    if (!scene) return "dark echo";
+    const sourceIds = [...new Set(Object.keys(scene.layers).map((key) => key.split(".")[0]))];
+    return sourceIds.length > 0
       ? sourceIds.map((id) => findAmbient(id)?.label ?? id).join(" + ")
       : "dark echo";
+  };
 
   const sync = (): void => {
     const snapshot = engine.getSnapshot();
     const { kind } = snapshot.mix;
     const sounding = kind === "playing" || kind === "suspended";
+    // "stopped" sigue teniendo una escena conservada, lista para "play": se
+    // presenta en pausa, no como si no hubiera nada -- igual que cualquier
+    // reproductor real mantiene el titulo mientras esta en pausa.
+    const hasComposition = kind !== "empty";
 
     if (sounding) {
       void focusBeacon.play().catch(() => {
@@ -82,11 +95,10 @@ export function setupMediaSession(engine: CompositionEngine): () => void {
       focusBeacon.pause();
     }
 
-    session.playbackState =
-      kind === "playing" ? "playing" : kind === "suspended" ? "paused" : "none";
-    session.metadata = sounding
+    session.playbackState = kind === "playing" ? "playing" : hasComposition ? "paused" : "none";
+    session.metadata = hasComposition
       ? new MediaMetadata({
-          title: title(snapshot.sources.map((source) => source.id)),
+          title: title(engine.getComposition()),
           artist: "dark echo",
           artwork: [
             {

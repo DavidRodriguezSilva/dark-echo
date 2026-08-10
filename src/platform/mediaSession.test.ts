@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import type { CompositionEngine } from "../audio/composition/compositionEngine";
+import type { Scene } from "../domain/scene";
 import { setupMediaSession } from "./mediaSession";
 
 interface FakeSnapshot {
   mix: { kind: "empty" | "stopped" | "playing" | "suspended" };
-  sources: { id: string }[];
+  composition: Scene | null;
+}
+
+function sceneWith(...sourceIds: string[]): Scene {
+  return { layers: Object.fromEntries(sourceIds.map((id) => [`${id}.cuerpo`, 1])) };
 }
 
 class FakeAudio {
@@ -70,6 +75,7 @@ function fakeEngine(initial: FakeSnapshot) {
   return {
     engine: {
       getSnapshot: () => snapshot,
+      getComposition: () => snapshot.composition,
       subscribe: (listener: () => void) => {
         listeners.add(listener);
         return () => listeners.delete(listener);
@@ -89,7 +95,7 @@ function fakeEngine(initial: FakeSnapshot) {
 describe("setupMediaSession", () => {
   it("sin soporte de Media Session, no hace nada y no lanza", () => {
     vi.stubGlobal("navigator", {});
-    const { engine } = fakeEngine({ mix: { kind: "empty" }, sources: [] });
+    const { engine } = fakeEngine({ mix: { kind: "empty" }, composition: null });
     expect(() => setupMediaSession(engine)).not.toThrow();
   });
 
@@ -97,7 +103,7 @@ describe("setupMediaSession", () => {
     const { session, audioInstances } = installFakeMediaSession();
     const { engine } = fakeEngine({
       mix: { kind: "playing" },
-      sources: [{ id: "rain" }, { id: "wind" }],
+      composition: sceneWith("rain", "wind"),
     });
 
     setupMediaSession(engine);
@@ -109,18 +115,30 @@ describe("setupMediaSession", () => {
     expect(session.positionState?.duration).toBe(Infinity);
   });
 
-  it("suspendido por el entorno se refleja como pausado, no como sonando", () => {
+  it("suspendido por el entorno se refleja como pausado, no como sonando, pero conserva el titulo", () => {
     const { session } = installFakeMediaSession();
-    const { engine } = fakeEngine({ mix: { kind: "suspended" }, sources: [{ id: "rain" }] });
+    const { engine } = fakeEngine({ mix: { kind: "suspended" }, composition: sceneWith("rain") });
 
     setupMediaSession(engine);
 
     expect(session.playbackState).toBe("paused");
+    expect((session.metadata as { init: { title: string } }).init.title).toBe("Lluvia");
+  });
+
+  it('detenido ("pausa") conserva el titulo y el playbackState -- no cae al nombre del sitio', () => {
+    const { session, audioInstances } = installFakeMediaSession();
+    const { engine } = fakeEngine({ mix: { kind: "stopped" }, composition: sceneWith("ocean") });
+
+    setupMediaSession(engine);
+
+    expect(session.playbackState).toBe("paused");
+    expect((session.metadata as { init: { title: string } }).init.title).toBe("Océano");
+    expect(audioInstances[0].paused).toBe(true);
   });
 
   it("sin nada sonando, no hay metadata, el playbackState es none y el beacon esta pausado", () => {
     const { session, audioInstances } = installFakeMediaSession();
-    const { engine } = fakeEngine({ mix: { kind: "empty" }, sources: [] });
+    const { engine } = fakeEngine({ mix: { kind: "empty" }, composition: null });
 
     setupMediaSession(engine);
 
@@ -132,17 +150,17 @@ describe("setupMediaSession", () => {
 
   it("reacciona a cambios posteriores del motor", () => {
     const { session } = installFakeMediaSession();
-    const { engine, setSnapshot } = fakeEngine({ mix: { kind: "empty" }, sources: [] });
+    const { engine, setSnapshot } = fakeEngine({ mix: { kind: "empty" }, composition: null });
     setupMediaSession(engine);
 
-    setSnapshot({ mix: { kind: "playing" }, sources: [{ id: "ocean" }] });
+    setSnapshot({ mix: { kind: "playing" }, composition: sceneWith("ocean") });
 
     expect(session.playbackState).toBe("playing");
   });
 
   it("los action handlers llaman a play()/stop() del motor", () => {
     const { handlers } = installFakeMediaSession();
-    const { engine, play, stop } = fakeEngine({ mix: { kind: "empty" }, sources: [] });
+    const { engine, play, stop } = fakeEngine({ mix: { kind: "empty" }, composition: null });
     setupMediaSession(engine);
 
     handlers.get("play")!();
@@ -155,9 +173,9 @@ describe("setupMediaSession", () => {
 
   it("al desmontar, limpia handlers, metadata, playbackState y pausa el beacon", () => {
     const { session, handlers, audioInstances } = installFakeMediaSession();
-    const { engine, setSnapshot } = fakeEngine({ mix: { kind: "empty" }, sources: [] });
+    const { engine, setSnapshot } = fakeEngine({ mix: { kind: "empty" }, composition: null });
     const teardown = setupMediaSession(engine);
-    setSnapshot({ mix: { kind: "playing" }, sources: [{ id: "rain" }] });
+    setSnapshot({ mix: { kind: "playing" }, composition: sceneWith("rain") });
 
     teardown();
 
