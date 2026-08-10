@@ -215,7 +215,7 @@ export class CompositionEngine {
       this.occlusionStage.output.connect(this.environmentStage.input);
       this.environmentStage.output.connect(this.master);
       this.master.connect(this.limiter);
-      this.limiter.connect(context.destination);
+      this.limiter.connect(result.output);
     }
 
     return { ok: true };
