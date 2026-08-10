@@ -3,6 +3,7 @@ import {
   scoreOcclusionAgainstEnvironment,
 } from "../../domain/composition/compatibility";
 import { findEnvironment, findModifier, findOcclusion } from "../../domain/composition/catalog";
+import { sceneSentence } from "../../domain/composition/sceneSentence";
 import { findAmbient, listAmbients } from "../../domain/catalog";
 import type { Scene } from "../../domain/scene";
 import { deriveLayerSeed, randomSeed } from "../../dsp/prng";
@@ -790,6 +791,15 @@ export class CompositionEngine {
     return { ok: false, message: `"${target}" no está sonando.` };
   }
 
+  /**
+   * La primera línea es la lectura de escena compartida
+   * (`command-console`, "Lectura de la escena en lenguaje natural"): la
+   * misma frase que encabeza el modo visual y que resume la barra de
+   * reproducción en curso, para que `status` no pueda contar una historia
+   * distinta de la que el resto de la interfaz muestra. Las líneas que
+   * siguen son el detalle técnico —capas y volúmenes— que la lectura, por
+   * ser lenguaje natural, no lleva.
+   */
   status(): string {
     const { mix, environment, occlusion, sources } = this.snapshot;
 
@@ -799,26 +809,29 @@ export class CompositionEngine {
 
     const lines: string[] = [];
     if (mix.kind === "suspended") {
-      lines.push(
-        `Suspendido por el sistema: ${mix.layers.map((l) => l.id).join(", ")}. "play" la reanuda.`
-      );
+      lines.push('Suspendido por el sistema. "play" la reanuda.');
     } else if (mix.kind === "stopped") {
-      lines.push(`Detenido. Escena conservada: ${mix.layers.map((l) => l.id).join(", ")}`);
-    } else if (mix.kind === "playing") {
-      lines.push("Sonando:");
+      lines.push("Detenido. Escena conservada.");
+    }
+
+    lines.push(
+      sceneSentence({
+        sources: sources.map((source) => ({ id: source.id, modifier: source.modifier })),
+        environmentId: environment?.id ?? null,
+        occlusionId: occlusion?.id ?? null,
+      })
+    );
+
+    if (mix.kind !== "empty") {
       for (const source of sources) {
-        const modifier = source.modifier
-          ? ` — ${source.modifier.id} (${source.modifier.distanceMeters} m)`
-          : "";
         const layers = mix.layers
           .filter((l) => l.id.startsWith(`${source.id}.`))
           .map((l) => `${l.id.slice(source.id.length + 1)} ${l.volume}`)
           .join(", ");
-        lines.push(`  ${source.id}${modifier} · ${layers}`);
+        if (layers) lines.push(`  ${source.id}: ${layers}`);
       }
     }
 
-    lines.push(`Entorno: ${environment?.id ?? "—"} | Barrera: ${occlusion?.id ?? "—"}`);
     return lines.join("\n");
   }
 

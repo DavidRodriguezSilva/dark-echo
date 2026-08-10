@@ -22,26 +22,24 @@ const STORAGE_KEY = "dark-echo.config";
 const STORAGE_VERSION = 2;
 
 /**
- * Modo inicial cuando el usuario no ha elegido todavia: **visual en un
- * dispositivo tactil, consola en uno de escritorio**.
+ * Modo inicial cuando el usuario no ha elegido todavia: **siempre visual**,
+ * en cualquier dispositivo (`update-interface-design`, design.md D15).
  *
- * La consola exige teclado fisico para ser usable, y en un movil ese teclado
- * ocupa media pantalla y no tiene tecla de tabulacion para el autocompletado;
- * arrancar ahi en consola es arrancar en el modo peor. Se consulta el tipo de
- * puntero y no el ancho de la ventana ni el `userAgent`: lo que decide no es
- * el tamaño de la pantalla sino si el puntero es un dedo — una tableta grande
- * sigue queriendo el modo visual, y una ventana estrecha en un escritorio con
- * raton no.
+ * Antes se decidia por tipo de puntero — visual en tactil, consola en
+ * escritorio — porque el modo visual no cubria todavia la composicion
+ * completa y era, en escritorio, la opcion peor. Con el modo visual como
+ * superconjunto estricto de la consola, ramificar por dispositivo solo
+ * conseguia que dos personas vieran un producto distinto en su primer
+ * arranque, sin que el spec pudiera declarar un comportamiento unico.
  *
  * Esto solo elige el punto de partida. En cuanto el usuario conmuta, su
  * preferencia queda registrada y manda siempre.
  */
 export function defaultInterfaceMode(): InterfaceMode {
-  if (typeof matchMedia === "undefined") return "console";
-  return matchMedia("(pointer: coarse)").matches ? "visual" : "console";
+  return "visual";
 }
 
-export const DEFAULT_CONFIG: UserConfig = { masterVolume: 0.5, interfaceMode: "console" };
+export const DEFAULT_CONFIG: UserConfig = { masterVolume: 0.5, interfaceMode: "visual" };
 
 /**
  * Migracion 1 -> 2: se añade `interfaceMode`. Es **obligatoria, no opcional**:
@@ -49,9 +47,9 @@ export const DEFAULT_CONFIG: UserConfig = { masterVolume: 0.5, interfaceMode: "c
  * alcance la version vigente, asi que subir la version sin registrarla haria
  * que todos los usuarios existentes perdieran su volumen maestro.
  *
- * El modo se resuelve por dispositivo, igual que en un primer arranque: quien
- * ya usaba la aplicacion nunca eligio un modo, asi que no hay preferencia que
- * respetar todavia.
+ * El modo se resuelve como en un primer arranque (`defaultInterfaceMode`):
+ * quien ya usaba la aplicacion nunca eligio un modo, asi que no hay
+ * preferencia que respetar todavia.
  */
 const MIGRATIONS: Migration[] = [
   {
@@ -73,7 +71,7 @@ export function readConfig(notices?: SystemNoticeStore): UserConfig {
   const result = readVersioned<UserConfig>(STORAGE_KEY, STORAGE_VERSION, MIGRATIONS);
   if (result.status === "ok" || result.status === "migrated") {
     // Un registro escrito por una version anterior de esta misma version 2
-    // podria no traer el campo; se resuelve por dispositivo en vez de asumir.
+    // podria no traer el campo; se resuelve como en un primer arranque.
     return { ...result.data, interfaceMode: result.data.interfaceMode ?? defaultInterfaceMode() };
   }
 

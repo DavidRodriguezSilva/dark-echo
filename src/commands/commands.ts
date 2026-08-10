@@ -5,6 +5,7 @@ import {
 import { listAmbients } from "../domain/catalog";
 import { listEnvironments, listModifiers, listOcclusions } from "../domain/composition/catalog";
 import { suggestNext, type SuggestionGroup } from "../domain/composition/suggestions";
+import type { Scene } from "../domain/scene";
 import { CommandRegistry } from "./registry";
 import type { CommandDescriptor, CommandResult } from "./types";
 import { commandHelp, generalHelp } from "./help";
@@ -101,6 +102,13 @@ export interface SceneController {
   save(name: string, overwrite: boolean): { ok: boolean; message: string };
   load(name: string): Promise<{ ok: boolean; message: string }>;
   remove(name: string): { ok: boolean; message: string };
+  /**
+   * Lee una escena guardada sin aplicarla al motor (`update-interface-design`,
+   * design.md D9): permite comparar la composición activa con la escena de la
+   * que se cargó, para distinguir una escena guardada de una con cambios sin
+   * guardar, sin efecto secundario sobre lo que suena.
+   */
+  peek(name: string): Scene | undefined;
 }
 
 /**

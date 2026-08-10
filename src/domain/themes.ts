@@ -13,8 +13,10 @@ export interface ThemeDeclaration {
 }
 
 const THEMES: ThemeDeclaration[] = [
-  { id: "default", label: "Predeterminado" },
+  { id: "default", label: "Bosque" },
   { id: "ambar", label: "Ámbar" },
+  { id: "blanco", label: "Blanco" },
+  { id: "neon", label: "Neón" },
 ];
 
 export type Scheme = "dark" | "light" | "auto";

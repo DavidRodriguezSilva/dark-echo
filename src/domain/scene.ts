@@ -30,3 +30,37 @@ export interface Scene {
   /** `Modifiers` por `Source`, indexados por el id del `Source`. */
   modifiers?: Record<string, SceneModifier>;
 }
+
+function sortedRecordEntries<T>(record: Record<string, T> | undefined): [string, T][] {
+  return Object.entries(record ?? {}).sort(([a], [b]) => a.localeCompare(b));
+}
+
+/**
+ * Compara dos escenas por su contenido, no por identidad de objeto
+ * (`update-interface-design`, design.md D9): distingue una escena guardada
+ * de una con cambios sin guardar comparando la composición activa con la
+ * escena de la que se cargó. El orden de las claves de `layers` y
+ * `modifiers` no importa — solo sus valores.
+ */
+export function sameScene(a: Scene, b: Scene): boolean {
+  const layersA = sortedRecordEntries(a.layers);
+  const layersB = sortedRecordEntries(b.layers);
+  if (layersA.length !== layersB.length) return false;
+  if (
+    layersA.some(([key, value], index) => layersB[index][0] !== key || layersB[index][1] !== value)
+  )
+    return false;
+
+  if ((a.environment ?? null) !== (b.environment ?? null)) return false;
+  if ((a.occlusion ?? null) !== (b.occlusion ?? null)) return false;
+
+  const modifiersA = sortedRecordEntries(a.modifiers);
+  const modifiersB = sortedRecordEntries(b.modifiers);
+  if (modifiersA.length !== modifiersB.length) return false;
+  return !modifiersA.some(
+    ([key, value], index) =>
+      modifiersB[index][0] !== key ||
+      modifiersB[index][1].id !== value.id ||
+      modifiersB[index][1].meters !== value.meters
+  );
+}

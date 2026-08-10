@@ -31,6 +31,7 @@ function buildRegistry() {
     save: () => ({ ok: true, message: "Escena guardada." }),
     load: async () => ({ ok: true, message: "Escena cargada." }),
     remove: () => ({ ok: false, message: "no aplica" }),
+    peek: () => undefined,
   };
   const update: UpdateController = { isAvailable: () => false, apply: () => {} };
 
@@ -84,7 +85,7 @@ describe("Gramática clásica sobre el motor único", () => {
 
     const resumed = await run(registry, "play");
     expect(resumed.kind).toBe("response");
-    expect((await run(registry, "status")).message).toContain("Sonando");
+    expect((await run(registry, "status")).message).toContain("Lluvia");
   });
 
   it("reset vacía y deja play sin nada que reanudar", async () => {
@@ -133,8 +134,11 @@ describe("compose — solo componentes de escena", () => {
     expect((await run(registry, "compose occlusion techo-madera")).kind).toBe("response");
 
     const status = await run(registry, "compose status");
-    expect(status.message).toContain("cabana");
-    expect(status.message).toContain("techo-madera");
+    // "compose status" delega en la lectura de escena compartida
+    // (command-console, "Lectura de la escena en lenguaje natural"): usa las
+    // etiquetas declaradas, no los identificadores crudos del catálogo.
+    expect(status.message).toContain("cabaña de madera");
+    expect(status.message).toContain("techo de madera");
   });
 
   it("distance nombra el sonido destinatario", async () => {

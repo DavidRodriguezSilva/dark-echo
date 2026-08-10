@@ -7,6 +7,8 @@ import { commandHelp } from "../commands/help";
 import { parseInput } from "../commands/parseInput";
 import { readFromStorage, writeToStorage } from "../platform/storage";
 import type { SystemNoticeStore } from "../platform/systemNotices";
+import { prefersReducedMotion } from "./lib/reducedMotion";
+import { Wordmark } from "./Wordmark";
 
 const HISTORY_KEY = "dark-echo.command-history";
 const HISTORY_VERSION = 1;
@@ -17,40 +19,45 @@ const FOLLOW_THRESHOLD_PX = 16;
 // listo para ejecutar en vez de en blanco -- el usuario tiene algo con lo
 // que empezar en vez de una pantalla vacia.
 const STARTER_COMMAND = "play rain";
+// Intervalo (ms) entre lineas de la introduccion progresiva
+// (command-console, "Bienvenida que da a conocer el modo visual").
+const INTRO_STEP_MS = 90;
 
 interface OutputLine {
-  kind: "echo" | "response" | "error" | "title" | "lead";
+  kind: "mark" | "echo" | "response" | "error" | "lead";
   text: string;
 }
 
 /**
- * Pantalla de inicio, en el orden que pidió el propietario: el nombre de la
- * aplicación en tipografía grande, la bienvenida, la descripción —que es donde
- * se menciona cómo pasar a la interfaz gráfica— y, por último, la ayuda.
+ * Introduccion de la consola, en el orden que exige la capacidad
+ * (`command-console`, "Bienvenida que da a conocer el modo visual"): marca,
+ * bienvenida, que hace la aplicacion, los dos modos con la posicion del
+ * conmutador, y como empezar con los comandos.
  *
- * Ya no se dice que se controla "escribiendo comandos, como en una terminal":
- * se ve que lo es, así que decirlo gastaba una línea sin informar.
+ * No se dice que la aplicacion "se controla escribiendo comandos, como en
+ * una terminal": se ve que lo es, asi que decirlo gastaba una linea sin
+ * informar. Tampoco se repite aqui que el modo visual es el arranque por
+ * defecto -- quien lee esto ya conmuto desde el, así que lo relevante es
+ * cómo volver, no que exista.
  */
 const WELCOME_LINES: OutputLine[] = [
-  { kind: "title", text: "dark-echo" },
-  { kind: "lead", text: "Bienvenido." },
+  { kind: "mark", text: "dark echo" },
+  { kind: "lead", text: "Bienvenido a la consola." },
   {
     kind: "response",
     text: "Genera ambientes sonoros procedurales —lluvia, viento, río y mar— completamente offline, sin grabaciones ni conexión.",
   },
   {
     kind: "response",
-    text: '"play", "add" y "remove" gobiernan qué suena; "compose", dónde suena: el recinto, la barrera y la distancia. Cada orden te sugiere qué puedes combinar a continuación.',
+    text: "Esta es la consola de comandos; también existe un modo visual con los sonidos como fichas táctiles. Vuelve a él con el icono de la esquina inferior derecha, junto al volumen.",
   },
   {
     kind: "response",
-    text: "Si prefieres controlarlo con una interfaz gráfica, pulsa el botón de abajo a la derecha.",
+    text: '"play", "add" y "remove" gobiernan qué suena; "compose", dónde suena. Escribe "help" para ver todos los comandos, o prueba "play rain" para empezar.',
   },
-  { kind: "response", text: 'Escribe "help" para ver la lista completa de comandos.' },
 ];
 
 function lineClassName(kind: OutputLine["kind"]): string {
-  if (kind === "title") return "text-4xl font-bold tracking-tight text-foreground sm:text-6xl";
   if (kind === "lead") return "text-base text-foreground";
   if (kind === "echo") return "font-semibold text-terminal-echo";
   if (kind === "error") return "text-terminal-error";
@@ -83,7 +90,11 @@ export function Console({
   }
   const initialValue = historyRef.current.getEntries().length === 0 ? STARTER_COMMAND : "";
 
-  const [lines, setLines] = useState<OutputLine[]>(WELCOME_LINES);
+  // Introduccion progresiva (command-console, "Bienvenida que da a conocer
+  // el modo visual"): con movimiento reducido, todo de una vez.
+  const [lines, setLines] = useState<OutputLine[]>(() =>
+    prefersReducedMotion() ? WELCOME_LINES : []
+  );
   const [value, setValue] = useState(initialValue);
   const [suggestions, setSuggestions] = useState<string[]>(
     () => autocomplete(initialValue, registry).candidates
@@ -98,6 +109,17 @@ export function Console({
   const followingRef = useRef(true);
 
   useEffect(() => {
+    if (prefersReducedMotion()) return;
+    let index = 0;
+    const id = setInterval(() => {
+      index++;
+      setLines(WELCOME_LINES.slice(0, index));
+      if (index >= WELCOME_LINES.length) clearInterval(id);
+    }, INTRO_STEP_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
     if (followingRef.current && outputRef.current) {
       outputRef.current.scrollTop = outputRef.current.scrollHeight;
     }
@@ -105,9 +127,11 @@ export function Console({
 
   // Foco inicial en la linea de entrada (command-console, "Identidad de
   // terminal"): un `ref` + `focus()` explicito es mas fiable que el
-  // atributo `autoFocus` solo, sobre todo tras el splash de arranque. Si
-  // hay un comando de ejemplo precargado, tambien se selecciona entero
-  // para que escribir cualquier cosa lo reemplace de inmediato.
+  // atributo `autoFocus` solo. `Console` solo se monta al entrar en el modo
+  // consola -- ya no en el arranque, que ahora ocurre en el modo visual --
+  // asi que este efecto ya enfoca exactamente en el momento correcto. Si hay
+  // un comando de ejemplo precargado, tambien se selecciona entero para que
+  // escribir cualquier cosa lo reemplace de inmediato.
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
@@ -152,6 +176,28 @@ export function Console({
     setValue(next);
     setSuggestions(autocomplete(next, registry).candidates);
     setCommandHint(commandHintFor(next, registry));
+  }
+
+  /**
+   * Acepta una candidata tocada (command-console, "Autocompletado y
+   * sugerencias", "Aceptar una candidata sin teclado"): a diferencia de
+   * `Tab`, que completa hasta el prefijo comun cuando hay varias, tocar una
+   * candidata concreta completa exactamente a ella -- es una eleccion
+   * inequivoca, asi que no hace falta detenerse en el prefijo comun.
+   */
+  function acceptSuggestion(candidate: string) {
+    const endsWithSpace = /\s$/.test(value);
+    const parts = value.split(/\s+/).filter(Boolean);
+    const completingCommandName = parts.length === 0 || (parts.length === 1 && !endsWithSpace);
+
+    if (completingCommandName) {
+      const quickPrefix = parts[0]?.match(/^[/.]/)?.[0] ?? "";
+      updateValue(`${quickPrefix}${candidate} `);
+    } else {
+      const tokens = endsWithSpace ? parts : parts.slice(0, -1);
+      updateValue(`${[...tokens, candidate].join(" ")} `);
+    }
+    inputRef.current?.focus();
   }
 
   async function handleSubmit(event: React.FormEvent) {
@@ -208,23 +254,46 @@ export function Console({
         onScroll={handleScroll}
         className="flex-1 space-y-1 overflow-y-auto px-4 py-3 font-mono text-sm whitespace-pre-wrap"
       >
-        {lines.map((line, index) => (
-          <p key={index} className={lineClassName(line.kind)}>
-            {line.kind === "echo" ? `> ${line.text}` : line.text}
-          </p>
-        ))}
+        {lines.map((line, index) =>
+          line.kind === "mark" ? (
+            <Wordmark key={index} size="lg" className="py-2" />
+          ) : (
+            <p key={index} className={lineClassName(line.kind)}>
+              {line.kind === "echo" ? `> ${line.text}` : line.text}
+            </p>
+          )
+        )}
       </div>
 
       {commandHint && (
-        <p className="px-4 pb-1 text-xs whitespace-pre-wrap text-terminal-response">
-          {commandHint}
-        </p>
+        <div className="flex flex-col gap-0.5 px-4 pb-1 text-xs whitespace-pre-wrap">
+          {commandHint.split("\n").map((part, index) =>
+            index === 0 ? (
+              <p key={index} className="text-terminal-response">
+                {part}
+              </p>
+            ) : (
+              <p key={index} className="font-mono text-foreground">
+                {part}
+              </p>
+            )
+          )}
+        </div>
       )}
 
       {suggestions.length > 0 && (
-        <p className="truncate px-4 pb-1 text-xs text-terminal-response">
-          {suggestions.join("  ")}
-        </p>
+        <div className="flex flex-wrap gap-1 px-4 pb-1.5">
+          {suggestions.map((candidate) => (
+            <button
+              key={candidate}
+              type="button"
+              onClick={() => acceptSuggestion(candidate)}
+              className="min-h-8 rounded-sm border border-border px-2 py-1 font-mono text-xs text-terminal-response transition-colors hover:border-input hover:text-foreground"
+            >
+              {candidate}
+            </button>
+          ))}
+        </div>
       )}
 
       <form

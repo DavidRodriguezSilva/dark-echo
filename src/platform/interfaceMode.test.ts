@@ -15,42 +15,16 @@ function installFakeLocalStorage(): void {
   });
 }
 
-/** Simula un dispositivo tactil o de escritorio segun el tipo de puntero. */
-function stubPointer(coarse: boolean): void {
-  vi.stubGlobal("matchMedia", (query: string) => ({
-    matches: query.includes("pointer: coarse") ? coarse : false,
-    media: query,
-    addEventListener: () => {},
-    removeEventListener: () => {},
-  }));
-}
-
 beforeEach(() => {
   installFakeLocalStorage();
-  stubPointer(false);
 });
 
 describe("InterfaceModeStore — valor inicial", () => {
-  it("sin preferencia registrada arranca en consola en un escritorio", () => {
-    stubPointer(false);
-    expect(new InterfaceModeStore().getSnapshot()).toBe("console");
-  });
-
-  it("sin preferencia registrada arranca en visual en un dispositivo tactil", () => {
-    stubPointer(true);
+  it("sin preferencia registrada arranca en visual, con independencia del dispositivo", () => {
     expect(new InterfaceModeStore().getSnapshot()).toBe("visual");
   });
 
-  it("una preferencia registrada manda sobre el tipo de dispositivo", () => {
-    // El usuario de escritorio que eligio el modo visual lo conserva.
-    stubPointer(false);
-    writeConfig({ masterVolume: 0.5, interfaceMode: "visual" });
-
-    expect(new InterfaceModeStore().getSnapshot()).toBe("visual");
-  });
-
-  it("un usuario tactil que eligio la consola la conserva", () => {
-    stubPointer(true);
+  it("una preferencia registrada por consola manda sobre el valor por defecto", () => {
     writeConfig({ masterVolume: 0.5, interfaceMode: "console" });
 
     expect(new InterfaceModeStore().getSnapshot()).toBe("console");
@@ -60,13 +34,13 @@ describe("InterfaceModeStore — valor inicial", () => {
 describe("InterfaceModeStore — cambio y notificacion", () => {
   it("toggle alterna entre los dos modos", () => {
     const store = new InterfaceModeStore();
-    expect(store.getSnapshot()).toBe("console");
-
-    store.toggle();
     expect(store.getSnapshot()).toBe("visual");
 
     store.toggle();
     expect(store.getSnapshot()).toBe("console");
+
+    store.toggle();
+    expect(store.getSnapshot()).toBe("visual");
   });
 
   it("notifica a los suscriptores en cada cambio", () => {
@@ -74,14 +48,14 @@ describe("InterfaceModeStore — cambio y notificacion", () => {
     let notifications = 0;
     const unsubscribe = store.subscribe(() => notifications++);
 
-    store.set("visual");
+    store.set("console");
     expect(notifications).toBe(1);
 
-    store.set("console");
+    store.set("visual");
     expect(notifications).toBe(2);
 
     unsubscribe();
-    store.set("visual");
+    store.set("console");
     expect(notifications).toBe(2);
   });
 
@@ -90,7 +64,7 @@ describe("InterfaceModeStore — cambio y notificacion", () => {
     let notifications = 0;
     store.subscribe(() => notifications++);
 
-    store.set("console");
+    store.set("visual");
 
     expect(notifications).toBe(0);
   });

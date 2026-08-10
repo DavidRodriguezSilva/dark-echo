@@ -18,6 +18,11 @@
   }
 
   body {
-    @apply bg-background text-foreground font-mono antialiased;
+    /*
+     * La sans lleva el texto que se lee de corrido; la mono (marca del
+     * producto) se aplica explicitamente donde significa algo -- marca,
+     * consola, rotulos y numeros -- no en toda la interfaz por defecto.
+     */
+    @apply bg-background text-foreground font-sans antialiased;
   }
 }

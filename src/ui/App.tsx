@@ -16,12 +16,24 @@ import { SceneStore } from "../platform/sceneStore";
 import type { UpdateStore } from "../platform/update";
 import { BootSplash } from "./BootSplash";
 import { Console } from "./Console";
+import { prefersReducedMotion } from "./lib/reducedMotion";
 import { StatusBar } from "./StatusBar";
 import { VisualControls } from "./VisualControls";
 import { AppearanceProvider } from "./AppearanceContext";
 
+/**
+ * Duración de la interposición de marca al conmutar de modo
+ * (`visual-identity`, "Pantalla de arranque y transición entre modos"):
+ * más breve que el arranque —no hay nada que "iniciar"—, solo el tiempo de
+ * que el cambio se perciba como intencional.
+ */
+const MODE_TRANSITION_MS = 320;
+
 export function App({ updateStore }: { updateStore: UpdateStore }) {
-  const [booted, setBooted] = useState(false);
+  // Con preferencia por movimiento reducido, el arranque no se interpone en
+  // absoluto (visual-identity, "Movimiento reducido"): la aplicación se
+  // presenta lista desde el primer render.
+  const [booted, setBooted] = useState(() => prefersReducedMotion());
   const noticesRef = useRef<SystemNoticeStore | null>(null);
   if (!noticesRef.current) {
     noticesRef.current = new SystemNoticeStore();
@@ -94,6 +106,7 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
           ? { ok: true, message: `Escena "${name}" eliminada.` }
           : { ok: false, message: `No existe la escena "${name}".` };
       },
+      peek: (name) => sceneStoreRef.current!.load(name),
     };
   }
 
@@ -198,8 +211,41 @@ function AppShell({
 }) {
   const mode = useSyncExternalStore(modeStore.subscribe, modeStore.getSnapshot);
 
+  // Nombre de la escena cargada (design.md D9): vive aquí, por encima de los
+  // dos modos, porque la barra de reproducción en curso lo muestra en ambos
+  // — incluido el modo consola, que no monta `VisualControls`. No se
+  // persiste entre sesiones: es seguimiento de la sesión en curso, no una
+  // preferencia ni parte de la composición guardada.
+  const [loadedSceneName, setLoadedSceneName] = useState<string | null>(null);
+
+  // Transición entre modos (visual-identity, "Pantalla de arranque y
+  // transición entre modos"): la pantalla de marca se interpone antes de
+  // conmutar, y es la propia interposición la que conmuta al terminar — el
+  // motor (`engine`, ajeno a este estado) no se toca en ningún momento.
+  const [transitioning, setTransitioning] = useState(false);
+
   if (!booted) {
     return <BootSplash onDone={onBooted} />;
+  }
+
+  function handleToggleMode() {
+    if (prefersReducedMotion()) {
+      modeStore.toggle();
+      return;
+    }
+    setTransitioning(true);
+  }
+
+  if (transitioning) {
+    return (
+      <BootSplash
+        minVisibleMs={MODE_TRANSITION_MS}
+        onDone={() => {
+          modeStore.toggle();
+          setTransitioning(false);
+        }}
+      />
+    );
   }
 
   return (
@@ -207,9 +253,20 @@ function AppShell({
       {mode === "console" ? (
         <Console registry={registry} notices={notices} />
       ) : (
-        <VisualControls engine={engine} scenes={scenes} notices={notices} />
+        <VisualControls
+          engine={engine}
+          scenes={scenes}
+          notices={notices}
+          loadedSceneName={loadedSceneName}
+          onLoadedSceneNameChange={setLoadedSceneName}
+        />
       )}
-      <StatusBar engine={engine} mode={mode} onToggleMode={() => modeStore.toggle()} />
+      <StatusBar
+        engine={engine}
+        mode={mode}
+        onToggleMode={handleToggleMode}
+        loadedSceneName={loadedSceneName}
+      />
     </main>
   );
 }

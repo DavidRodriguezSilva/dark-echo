@@ -34,7 +34,7 @@ describe("readConfig / writeConfig", () => {
     expect(readConfig().interfaceMode).toBe("visual");
   });
 
-  it("migra una configuracion v1 conservando el volumen maestro", () => {
+  it("migra una configuracion v1 conservando el volumen maestro y adoptando modo visual", () => {
     // Sin la migracion declarada, `readVersioned` descartaria el registro y
     // el usuario perderia su volumen: es lo que este caso protege.
     writeToStorage("dark-echo.config", 1, { masterVolume: 0.9 });
@@ -42,7 +42,7 @@ describe("readConfig / writeConfig", () => {
     const config = readConfig();
 
     expect(config.masterVolume).toBe(0.9);
-    expect(config.interfaceMode).toBeDefined();
+    expect(config.interfaceMode).toBe("visual");
   });
 
   it("ante datos corruptos, arranca con valores por defecto e informa una vez", () => {
