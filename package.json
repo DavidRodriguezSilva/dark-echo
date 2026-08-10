@@ -1,0 +1,57 @@
+{
+  "name": "dark-echo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "pnpm@11.10.0",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:signal": "vitest run --config vitest.signal.config.ts",
+    "check:tokens": "node scripts/check-tokens.ts"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.1.2",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.4",
+    "@vitejs/plugin-react": "^6.0.5",
+    "@vitest/browser": "4.1.10",
+    "@vitest/browser-playwright": "^4.1.10",
+    "eslint": "^10.8.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^17.8.0",
+    "playwright": "^1.62.1",
+    "prettier": "^3.9.6",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.65.0",
+    "vite": "^8.1.1",
+    "vite-plugin-pwa": "^1.3.0",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@radix-ui/react-slider": "^1.4.7",
+    "@radix-ui/react-slot": "^1.3.3",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.28.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "tailwind-merge": "^3.6.0",
+    "workbox-window": "^7.4.1"
+  }
+}

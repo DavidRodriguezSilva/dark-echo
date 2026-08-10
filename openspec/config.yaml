@@ -1,0 +1,76 @@
+schema: spec-driven
+
+context: |
+  Producto: dark-echo, generador de ambientes sonoros procedurales y
+  offline (lluvia, viento, río, mar, ruido blanco/rosa/marrón), controlado
+  desde una consola de comandos con identidad de terminal, instalable como
+  PWA. Ver `readme.md` para la visión, `docs/synthesis-reference.md` para
+  los modelos de síntesis por fenómeno (parámetros, unidades, fuentes,
+  criterios de aceptación) y `docs/ambient-catalog-roadmap.md` para el
+  catálogo completo, implementado y planeado.
+
+  Stack: TypeScript estricto, React 19, Vite, Tailwind v4 con primitivas de
+  shadcn/ui copiadas al repositorio (no instaladas como librería), Web
+  Audio API (`AudioWorklet`, sin `ScriptProcessorNode`), pnpm. Sin backend
+  ni base de datos; toda la persistencia es local (`localStorage`).
+
+  Arquitectura en capas con dependencias en una sola dirección (design.md
+  D6 de `changes/procedural-audio-foundation/`, hecho cumplir con
+  `no-restricted-imports` en `eslint.config.js`):
+
+    domain/    tipos, catálogo de ambientes, modelo de escena     (sin dependencias)
+    dsp/       primitivas puras: PRNG, ruido, envolventes, voces  (sin dependencias)
+    audio/     runtime: contexto, compilador de capas, worklet    (usa domain + dsp)
+    commands/  gramática, registro, ejecución                     (usa domain, habla con audio por interfaz)
+    platform/  puertos: almacenamiento, apariencia, actualización de la PWA
+    styles/    tokens de apariencia y temas                       (CSS, sin lógica)
+    ui/        React + primitivas de shadcn/ui                    (usa commands + estado observable + styles)
+
+  `domain/`, `dsp/` y `audio/` no dependen de ninguna librería externa —
+  condición para que sus tests corran en Node de forma determinista bajo
+  semilla (PRNG propio, nunca `Math.random()` en `dsp/`). `commands/` no
+  conoce `platform/` ni `ui/`: quien necesita un puerto se lo inyecta como
+  interfaz (patrón en `commands/commands.ts`).
+
+  Contrato de tokens (design.md D13): `styles/tokens.css` es la única
+  fuente de valores de apariencia, en OKLCH. Esquema oscuro por defecto en
+  `:root`, `.light` como sobreescritura; tema en `data-theme` sobre el
+  elemento raíz, eje ortogonal al esquema. `scripts/check-tokens.ts` falla
+  si `ui/` contiene un color, radio o sombra literal en vez de un token.
+
+  Dos suites de test, por motivo distinto (design.md D8): Vitest en Node
+  para lógica pura y determinista (`*.test.ts`), y Vitest en modo navegador
+  sobre Chromium real (`*.signal.test.ts`, `pnpm test:signal`) para
+  renderizar cada ambiente con `OfflineAudioContext` y verificar los
+  criterios de `docs/synthesis-reference.md` sobre el grafo real —una
+  réplica en TS puro no probaría el producto.
+
+  Convención de commits: mensajes en español, imperativo, estilo
+  Conventional Commits (`feat(scope): ...`) sin firma manual además del
+  `Co-Authored-By` que añade la herramienta.
+
+rules:
+  proposal:
+    - Si el change toca síntesis de audio, indicar en el Why si afecta el
+      timbre de un ambiente existente (requiere comparación A/B) o añade
+      uno nuevo (requiere entrada en docs/synthesis-reference.md).
+  design:
+    - Toda decisión que añada una dependencia debe justificar por qué no
+      basta con Web Audio nativo o con código propio, y si la dependencia
+      entra al núcleo de audio (domain/dsp/audio) o solo a ui/ — el
+      principio de mínimas dependencias solo exige cero para el núcleo.
+    - Los parámetros de un modelo de síntesis se declaran en unidad física
+      (Hz, s, m, dB, eventos/s) con rango y justificación, nunca como
+      coeficiente ajustado a oído; los coeficientes se derivan en tiempo de
+      ejecución a partir de la frecuencia de muestreo real.
+  tasks:
+    - Cada tarea que module un ambiente nuevo o modifique uno existente
+      incluye, como tarea separada, el test de señal que verifica sus
+      criterios de aceptación sobre el render real.
+    - Las tareas de verificación que dependan de hardware real (dispositivo
+      Android, altavoz físico) o de juicio perceptual humano se marcan como
+      tales explícitamente en vez de darse por completas con una
+      aproximación automatizada.
+  specs:
+    - Un requisito sobre un fenómeno sonoro nuevo referencia su modelo en
+      docs/synthesis-reference.md por id, no describe la síntesis inline.

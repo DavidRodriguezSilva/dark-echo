@@ -1,0 +1,317 @@
+/*
+ * Contrato de tokens de dark-echo.
+ *
+ * Reglas del contrato (verificadas por src/styles/tokens.test.ts):
+ *   1. Los componentes consumen tokens, nunca valores literales.
+ *   2. Toda superficie declara el token de texto que le corresponde.
+ *   3. Los tokens de dominio toman como valor por defecto un token base,
+ *      de modo que un tema puede ignorarlos y seguir siendo coherente.
+ *
+ * Dos ejes independientes y ortogonales:
+ *   - Esquema: oscuro por defecto en `:root`; la clase `.light` sobreescribe
+ *     al esquema claro. `@custom-variant dark` queda disponible para que un
+ *     componente puntual condicione algo al esquema oscuro con `dark:`.
+ *   - Tema:    el atributo `data-theme` sobre el elemento raiz.
+ *
+ * Dark-first: el conjunto base de `:root` es el esquema oscuro, sin
+ * necesitar ninguna clase ni JavaScript — es el resultado correcto incluso
+ * antes de que corra el script de preferencia de esquema (theming, tarea
+ * 13.6). El esquema claro es la capa de sobreescritura, al contrario que la
+ * plantilla por defecto de shadcn. El producto es una terminal y su uso
+ * previsto es relajacion y descanso.
+ *
+ * Color en OKLCH: su claridad es perceptualmente uniforme, asi que derivar
+ * una variante o comprobar que un par mantiene contraste es predecible.
+ */
+
+@custom-variant dark (&:is(.dark *));
+
+/* ---------------------------------------------------------------- *
+ * Tipografía propia empaquetada (theming, "Tipografía propia
+ * empaquetada"): dos pesos de IBM Plex Mono (SIL OFL 1.1, ver
+ * src/assets/fonts/OFL.txt), servidos desde el propio bundle. Vite
+ * resuelve estas rutas relativas, les pone hash y las incluye en
+ * `workbox.globPatterns` (vite.config.ts) para que el precache de la PWA
+ * las cubra — ninguna peticion de red en ejecucion.
+ * ---------------------------------------------------------------- */
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../assets/fonts/ibm-plex-mono-400.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("../assets/fonts/ibm-plex-mono-600.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------------------------------------------------------------- *
+ * Conjunto base — esquema oscuro
+ * ---------------------------------------------------------------- */
+
+:root {
+  /*
+   * Superficies y su texto asociado. Croma minima constante en el eje frio
+   * (h=250, "aire de noche") en vez de acromatico puro (design.md D2): sobre
+   * un gris exactamente neutro cualquier acento calido se lee como un color
+   * puesto encima; sobre un gris ligeramente frio se lee como una luz dentro
+   * de la escena. El acento (--primary) es la unica fuente de color calido —
+   * estas superficies no cambian de un tema a otro (theming, "El acento no
+   * tiñe las superficies").
+   */
+  --background: oklch(0.18 0.012 250);
+  --foreground: oklch(0.949 0.004 250);
+
+  --panel: oklch(0.215 0.012 250);
+  --panel-foreground: oklch(0.949 0.004 250);
+
+  --popover: oklch(0.248 0.012 250);
+  --popover-foreground: oklch(0.949 0.004 250);
+
+  --muted: oklch(0.271 0.01 250);
+  --muted-foreground: oklch(0.735 0.006 250);
+
+  --accent: oklch(0.307 0.01 250);
+  --accent-foreground: oklch(0.949 0.004 250);
+
+  --primary: oklch(0.815 0.135 158);
+  --primary-foreground: oklch(0.19 0.028 158);
+
+  --secondary: oklch(0.271 0.01 250);
+  --secondary-foreground: oklch(0.949 0.004 250);
+
+  --destructive: oklch(0.735 0.155 25);
+  --destructive-foreground: oklch(0.19 0.03 25);
+
+  /* Bordes, entradas y foco */
+  --border: oklch(0.39 0.01 250);
+  --input: oklch(0.452 0.01 250);
+  --ring: oklch(0.815 0.135 158);
+
+  /* Velo de los dialogos. Lleva alfa por definicion. */
+  --overlay: oklch(0.14 0.012 250 / 0.72);
+
+  /*
+   * Tipografias. La mono es la marca del producto (theming, "Tipografia
+   * propia empaquetada"): "IBM Plex Mono" primero, la pila del sistema
+   * como respaldo si el recurso empaquetado no cargara. La sans se queda
+   * en pilas del sistema — es la que lleva el texto que se lee de corrido.
+   */
+  --font-mono:
+    "IBM Plex Mono", ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, "Liberation Mono",
+    monospace;
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Geometria */
+  --radius: 0.375rem;
+  --spacing: 0.25rem;
+
+  /* Sombras */
+  --shadow-2xs: 0 1px 2px 0 oklch(0 0 0 / 0.16);
+  --shadow-xs: 0 1px 2px 0 oklch(0 0 0 / 0.2);
+  --shadow-sm: 0 1px 3px 0 oklch(0 0 0 / 0.24), 0 1px 2px -1px oklch(0 0 0 / 0.24);
+  --shadow: 0 1px 3px 0 oklch(0 0 0 / 0.28), 0 1px 2px -1px oklch(0 0 0 / 0.28);
+  --shadow-md: 0 4px 6px -1px oklch(0 0 0 / 0.28), 0 2px 4px -2px oklch(0 0 0 / 0.28);
+  --shadow-lg: 0 10px 15px -3px oklch(0 0 0 / 0.3), 0 4px 6px -4px oklch(0 0 0 / 0.3);
+  --shadow-xl: 0 20px 25px -5px oklch(0 0 0 / 0.32), 0 8px 10px -6px oklch(0 0 0 / 0.32);
+  --shadow-2xl: 0 25px 50px -12px oklch(0 0 0 / 0.4);
+
+  /* ---------------------------------------------------------------- *
+   * Tokens de dominio — su valor por defecto es un token base
+   * ---------------------------------------------------------------- */
+
+  --terminal-prompt: var(--primary);
+  --terminal-echo: var(--foreground);
+  --terminal-response: var(--muted-foreground);
+  --terminal-error: var(--destructive);
+  --terminal-cursor: var(--primary);
+  --terminal-layer-active: var(--primary);
+  --terminal-level: var(--primary);
+  --terminal-level-track: var(--muted);
+}
+
+/* ---------------------------------------------------------------- *
+ * Esquema claro — capa de sobreescritura del conjunto base
+ * ---------------------------------------------------------------- */
+
+:root.light {
+  /* Papel frio con luz de ventana (design.md D2), no crema: la misma logica
+   * de eje frio del esquema oscuro, en el extremo claro. */
+  --background: oklch(0.976 0.004 250);
+  --foreground: oklch(0.205 0.008 250);
+
+  --panel: oklch(1 0 0);
+  --panel-foreground: oklch(0.205 0.008 250);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.205 0.008 250);
+
+  --muted: oklch(0.942 0.006 250);
+  --muted-foreground: oklch(0.44 0.006 250);
+
+  --accent: oklch(0.922 0.008 250);
+  --accent-foreground: oklch(0.205 0.008 250);
+
+  --primary: oklch(0.44 0.115 158);
+  --primary-foreground: oklch(0.985 0 0);
+
+  --secondary: oklch(0.942 0.006 250);
+  --secondary-foreground: oklch(0.205 0.008 250);
+
+  --destructive: oklch(0.47 0.185 25);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --border: oklch(0.852 0.006 250);
+  --input: oklch(0.762 0.006 250);
+  --ring: oklch(0.44 0.115 158);
+
+  --overlay: oklch(0.22 0.012 250 / 0.45);
+}
+
+/* ---------------------------------------------------------------- *
+ * Tema "default" — reafirma los valores base para cortar la herencia de
+ * `--primary`/`--ring` cuando este bloque queda anidado bajo un elemento con
+ * otro `data-theme` activo (p. ej. el swatch de "Predeterminado" dentro del
+ * selector de temas, que de otro modo heredaria el color del tema en uso).
+ * ---------------------------------------------------------------- */
+
+[data-theme="default"] {
+  --primary: oklch(0.815 0.135 158);
+  --primary-foreground: oklch(0.19 0.028 158);
+  --ring: oklch(0.815 0.135 158);
+}
+
+[data-theme="default"].light {
+  --primary: oklch(0.44 0.115 158);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.44 0.115 158);
+}
+
+/* ---------------------------------------------------------------- *
+ * Tema "ambar" — sobreescribe solo lo que lo distingue (theming, tarea
+ * 13.2): demuestra que la herencia del base funciona, porque los tokens de
+ * dominio (--terminal-prompt, --terminal-cursor, etc.) referencian
+ * `var(--primary)` y recogen este cambio sin declararse aqui.
+ * ---------------------------------------------------------------- */
+
+[data-theme="ambar"] {
+  --primary: oklch(0.8 0.15 70);
+  --primary-foreground: oklch(0.19 0.03 70);
+  --ring: oklch(0.8 0.15 70);
+}
+
+[data-theme="ambar"].light {
+  --primary: oklch(0.55 0.15 70);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.55 0.15 70);
+}
+
+/* ---------------------------------------------------------------- *
+ * Tema "blanco" — acento acromatico (design.md D3). En esquema claro un
+ * acento blanco sobre papel blanco seria invisible, asi que resuelve a
+ * grafito: la etiqueta nombra el caracter del tema (sin color), no su valor
+ * literal en cada esquema — lo exige el contraste, no es una licencia.
+ * ---------------------------------------------------------------- */
+
+[data-theme="blanco"] {
+  --primary: oklch(0.93 0 0);
+  --primary-foreground: oklch(0.19 0 0);
+  --ring: oklch(0.93 0 0);
+}
+
+[data-theme="blanco"].light {
+  --primary: oklch(0.32 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.32 0 0);
+}
+
+/* ---------------------------------------------------------------- *
+ * Tema "neon" — magenta electrico (design.md D3): se aleja mas de los otros
+ * tres que un verde acido, que ademas chocaria con "default". Sigue siendo
+ * una opcion que el usuario elige, no el recurso principal de la interfaz.
+ * ---------------------------------------------------------------- */
+
+[data-theme="neon"] {
+  --primary: oklch(0.78 0.21 340);
+  --primary-foreground: oklch(0.19 0.05 340);
+  --ring: oklch(0.78 0.21 340);
+}
+
+[data-theme="neon"].light {
+  --primary: oklch(0.52 0.22 340);
+  --primary-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.52 0.22 340);
+}
+
+/* ---------------------------------------------------------------- *
+ * Exposicion a Tailwind
+ *
+ * `inline` sustituye el valor en la utilidad en lugar de emitir otra
+ * variable, de modo que cada utilidad resuelve el token en el ambito
+ * donde se usa: cambiar de esquema o de tema no requiere recalcular nada.
+ * ---------------------------------------------------------------- */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+
+  --color-panel: var(--panel);
+  --color-panel-foreground: var(--panel-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
+
+  --color-terminal-prompt: var(--terminal-prompt);
+  --color-terminal-echo: var(--terminal-echo);
+  --color-terminal-response: var(--terminal-response);
+  --color-terminal-error: var(--terminal-error);
+  --color-terminal-cursor: var(--terminal-cursor);
+  --color-terminal-layer-active: var(--terminal-layer-active);
+  --color-terminal-level: var(--terminal-level);
+  --color-terminal-level-track: var(--terminal-level-track);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --spacing: var(--spacing);
+
+  --shadow-2xs: var(--shadow-2xs);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-sm: var(--shadow-sm);
+  --shadow: var(--shadow);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-2xl: var(--shadow-2xl);
+}

@@ -1,0 +1,28 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/*
+ * Unica capa de estilo global del proyecto. No contiene estilos de
+ * componente: la apariencia se declara con utilidades en `className` sobre
+ * los tokens de tokens.css. Lo que hay aqui es solo lo que no puede
+ * expresarse en un componente porque afecta al documento entero.
+ */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    /* El fondo del documento cubre el rebote del scroll en movil. */
+    @apply bg-background;
+  }
+
+  body {
+    /*
+     * La sans lleva el texto que se lee de corrido; la mono (marca del
+     * producto) se aplica explicitamente donde significa algo -- marca,
+     * consola, rotulos y numeros -- no en toda la interfaz por defecto.
+     */
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+}

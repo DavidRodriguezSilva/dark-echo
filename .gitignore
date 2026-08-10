@@ -164,3 +164,15 @@ node_modules
 psd
 thumb
 sketch
+
+### dark-echo ###
+# Salida de build de Vite
+/dist
+# Service worker generado en desarrollo por vite-plugin-pwa
+/dev-dist
+# Navegadores y reportes de Playwright (tests de senal)
+/test-results
+/playwright-report
+# Capturas que Vitest en modo navegador adjunta a un test que falla
+/.vitest-attachments
+**/__screenshots__
