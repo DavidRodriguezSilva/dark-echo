@@ -1,4 +1,5 @@
 import { readVersioned, writeToStorage } from "./storage";
+import { SCENE_FORMAT_VERSION, SCENE_MIGRATIONS } from "./sceneMigrations";
 import type { Scene } from "../domain/scene";
 import type { SystemNoticeStore } from "./systemNotices";
 
@@ -11,10 +12,10 @@ import type { SystemNoticeStore } from "./systemNotices";
  * es, por construccion, el estado de cierre.
  */
 const STORAGE_KEY = "dark-echo.last-mix";
-const STORAGE_VERSION = 1;
+const STORAGE_VERSION = SCENE_FORMAT_VERSION;
 
 export function readLastMix(notices?: SystemNoticeStore): Scene | undefined {
-  const result = readVersioned<Scene | null>(STORAGE_KEY, STORAGE_VERSION);
+  const result = readVersioned<Scene | null>(STORAGE_KEY, STORAGE_VERSION, SCENE_MIGRATIONS);
   if (result.status === "ok" || result.status === "migrated") return result.data ?? undefined;
 
   if (result.status === "discarded") {

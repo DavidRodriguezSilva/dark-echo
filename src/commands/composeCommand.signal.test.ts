@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { AmbientMixer } from "../audio/ambientMixer";
 import { CompositionEngine } from "../audio/composition/compositionEngine";
 import { resetAudioContextForTests } from "../audio/context";
 import { AppearanceStore } from "../platform/appearance";
@@ -13,14 +12,13 @@ import {
 } from "./commands";
 
 /**
- * Gramática del comando `compose` con varios `Source`
- * (`add-multi-source-composition`, tarea 3.5). Vive en la suite de señal
- * porque `CompositionEngine` crea nodos de Web Audio reales: un doble del
- * motor probaría el doble, no el comando.
+ * Gramática de la consola sobre el motor único (`retire-legacy-engine`,
+ * tareas 3.5 y 4.6). Vive en la suite de señal porque `CompositionEngine`
+ * crea nodos de Web Audio reales: un doble del motor probaría el doble, no el
+ * comando.
  */
 
-function buildRegistry(): { registry: ReturnType<typeof createCommandRegistry> } {
-  const mixer = new AmbientMixer();
+function buildRegistry() {
   const appearanceStore = new AppearanceStore();
 
   const appearance: AppearanceController = {
@@ -30,18 +28,16 @@ function buildRegistry(): { registry: ReturnType<typeof createCommandRegistry> }
   };
   const scenes: SceneController = {
     list: () => [],
-    save: () => ({ ok: false, message: "no aplica" }),
-    load: async () => ({ ok: false, message: "no aplica" }),
+    save: () => ({ ok: true, message: "Escena guardada." }),
+    load: async () => ({ ok: true, message: "Escena cargada." }),
     remove: () => ({ ok: false, message: "no aplica" }),
   };
   const update: UpdateController = { isAvailable: () => false, apply: () => {} };
 
-  return {
-    registry: createCommandRegistry(mixer, appearance, scenes, update, new CompositionEngine()),
-  };
+  return createCommandRegistry(new CompositionEngine(), appearance, scenes, update);
 }
 
-async function run(registry: ReturnType<typeof createCommandRegistry>, input: string) {
+async function run(registry: ReturnType<typeof buildRegistry>, input: string) {
   const result = await executeCommand(input, registry);
   if (!result) throw new Error(`El comando "${input}" no produjo resultado`);
   return result;
@@ -51,91 +47,112 @@ beforeEach(() => {
   resetAudioContextForTests();
 });
 
-describe("compose source — acumula en vez de sustituir", () => {
-  it("incorpora varios Source y los lista todos en status", async () => {
-    const { registry } = buildRegistry();
+describe("Gramática clásica sobre el motor único", () => {
+  it("play sustituye y add acumula", async () => {
+    const registry = buildRegistry();
 
-    expect((await run(registry, "compose source rain")).kind).toBe("response");
-    expect((await run(registry, "compose source wind")).kind).toBe("response");
-
-    const status = await run(registry, "compose status");
+    await run(registry, "play rain");
+    await run(registry, "add wind");
+    let status = await run(registry, "status");
     expect(status.message).toContain("rain");
     expect(status.message).toContain("wind");
+
+    await run(registry, "play ocean");
+    status = await run(registry, "status");
+    expect(status.message).toContain("ocean");
+    expect(status.message).not.toContain("wind");
   });
 
-  it("admite los ambientes que el piloto no ofrecía", async () => {
-    const { registry } = buildRegistry();
+  it("remove retira una capa concreta", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
 
-    for (const id of ["river", "ocean", "white-noise", "pink-noise", "brown-noise"]) {
-      const result = await run(registry, `compose source ${id}`);
-      expect(result.kind, `${id} debería aceptarse`).toBe("response");
+    const result = await run(registry, "remove rain.goteo");
+
+    expect(result.kind).toBe("response");
+    const status = await run(registry, "status");
+    expect(status.message).not.toContain("goteo");
+  });
+
+  it("stop conserva y play reanuda", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
+
+    const stopped = await run(registry, "stop");
+    expect(stopped.kind).toBe("response");
+    expect((await run(registry, "status")).message).toContain("Detenido");
+
+    const resumed = await run(registry, "play");
+    expect(resumed.kind).toBe("response");
+    expect((await run(registry, "status")).message).toContain("Sonando");
+  });
+
+  it("reset vacía y deja play sin nada que reanudar", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
+    await run(registry, "stop");
+    await run(registry, "reset");
+
+    const result = await run(registry, "play");
+
+    expect(result.kind).toBe("error");
+  });
+
+  it("volume acepta maestro, ambiente y capa", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
+
+    expect((await run(registry, "volume 0.4")).kind).toBe("response");
+    expect((await run(registry, "volume rain 0.3")).kind).toBe("response");
+    expect((await run(registry, "volume rain.cuerpo 0.2")).kind).toBe("response");
+    expect((await run(registry, "volume ocean 0.2")).kind).toBe("error");
+  });
+});
+
+describe("compose — solo componentes de escena", () => {
+  it("ya no ofrece los verbos que duplicaban a los clásicos", async () => {
+    const registry = buildRegistry();
+
+    for (const input of [
+      "compose source rain",
+      "compose remove rain",
+      "compose stop",
+      "compose volume 0.5",
+    ]) {
+      const result = await run(registry, input);
+      expect(result.kind, `"${input}" debería haber desaparecido`).toBe("error");
     }
   });
 
-  it("rechaza un Source que no existe en el catálogo", async () => {
-    const { registry } = buildRegistry();
+  it("environment y occlusion alcanzan a toda la escena con una sola orden", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
+    await run(registry, "add wind");
 
-    const result = await run(registry, "compose source volcan");
-
-    expect(result.kind).toBe("error");
-  });
-});
-
-describe("compose remove — retira un Source concreto", () => {
-  it("retira solo el Source nombrado", async () => {
-    const { registry } = buildRegistry();
-    await run(registry, "compose source rain");
-    await run(registry, "compose source wind");
-
-    const removed = await run(registry, "compose remove rain");
-    expect(removed.kind).toBe("response");
+    expect((await run(registry, "compose environment cabana")).kind).toBe("response");
+    expect((await run(registry, "compose occlusion techo-madera")).kind).toBe("response");
 
     const status = await run(registry, "compose status");
-    expect(status.message).not.toContain("rain");
-    expect(status.message).toContain("wind");
+    expect(status.message).toContain("cabana");
+    expect(status.message).toContain("techo-madera");
   });
 
-  it("informa cuando el Source nombrado no está sonando", async () => {
-    const { registry } = buildRegistry();
-    await run(registry, "compose source rain");
-
-    const result = await run(registry, "compose remove ocean");
-
-    expect(result.kind).toBe("error");
-  });
-});
-
-describe("compose source off — retira todos los Source", () => {
-  it("deja la escena sin ningún Source", async () => {
-    const { registry } = buildRegistry();
-    await run(registry, "compose source rain");
-    await run(registry, "compose source wind");
-
-    const result = await run(registry, "compose source off");
-    expect(result.kind).toBe("response");
-
-    const status = await run(registry, "compose status");
-    expect(status.message).toBe("Motor de composición: sin nada activo.");
-  });
-});
-
-describe("compose distance / modifier — el Source destinatario es explícito", () => {
-  it("aplica la distancia solo al Source nombrado", async () => {
-    const { registry } = buildRegistry();
-    await run(registry, "compose source rain");
-    await run(registry, "compose source wind");
+  it("distance nombra el sonido destinatario", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
+    await run(registry, "add wind");
 
     const result = await run(registry, "compose distance rain 80");
+
     expect(result.kind).toBe("response");
     expect(result.message).toContain("rain");
-
-    const status = await run(registry, "compose status");
-    expect(status.message).toContain("80 m");
+    // Sin destinatario la forma ya no valida.
+    expect((await run(registry, "compose distance 80")).kind).toBe("error");
   });
 
-  it("rechaza una orden de distancia sobre un Source que no suena", async () => {
-    const { registry } = buildRegistry();
-    await run(registry, "compose source rain");
+  it("rechaza una orden de distancia sobre un sonido que no suena", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
 
     const result = await run(registry, "compose distance ocean 80");
 
@@ -143,54 +160,97 @@ describe("compose distance / modifier — el Source destinatario es explícito",
     expect(result.message).toContain("no está sonando");
   });
 
-  it("rechaza una orden de distancia sin nombrar el Source", async () => {
-    const { registry } = buildRegistry();
-    await run(registry, "compose source rain");
-
-    // Sin destinatario la forma no valida: la aridad ya no coincide con
-    // ninguna forma declarada del comando.
-    const result = await run(registry, "compose distance 80");
-
-    expect(result.kind).toBe("error");
-  });
-
-  it("retira el Modifier del Source nombrado", async () => {
-    const { registry } = buildRegistry();
-    await run(registry, "compose source rain");
-    await run(registry, "compose modifier rain distancia");
-
-    const result = await run(registry, "compose modifier rain off");
-
-    expect(result.kind).toBe("response");
-  });
-});
-
-describe("compose list — deriva el catálogo, no lo repite", () => {
-  it("lista los Source con su etiqueta real del catálogo de ambientes", async () => {
-    const { registry } = buildRegistry();
+  it("compose list muestra los componentes de escena, no los sonidos", async () => {
+    const registry = buildRegistry();
 
     const result = await run(registry, "compose list");
 
-    expect(result.message).toContain("rain");
-    expect(result.message).toContain("brown-noise");
-    // La etiqueta viene del catálogo: si se repitiera el id como etiqueta,
-    // la línea sería "rain — rain".
-    expect(result.message).not.toContain("rain — rain");
+    expect(result.message).toContain("cabana");
+    expect(result.message).toContain("techo-madera");
+    expect(result.message).toContain("distancia");
   });
 });
 
-describe("compose — los componentes de escena alcanzan a todos los Source", () => {
-  it("un Environment se activa una sola vez con varios Source sonando", async () => {
-    const { registry } = buildRegistry();
-    await run(registry, "compose source rain");
-    await run(registry, "compose source wind");
+describe("Sugerencia contextual (command-console)", () => {
+  it("tras play ofrece recinto, barrera y distancia", async () => {
+    const registry = buildRegistry();
+
+    const result = await run(registry, "play rain");
+
+    expect(result.message).toContain("siguiente");
+    expect(result.message).toContain("compose environment");
+    expect(result.message).toContain("cabana");
+    expect(result.message).toContain("compose occlusion");
+  });
+
+  it("deja de ofrecer el recinto una vez activo", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
 
     const result = await run(registry, "compose environment cabana");
 
+    expect(result.message).not.toContain("compose environment");
+    expect(result.message).toContain("compose occlusion");
+  });
+
+  it("marca la afinidad de las barreras sin ocultarlas", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
+
+    const result = await run(registry, "compose environment campo-abierto");
+
+    // Se ofrece igual, marcada: el sistema advierte, no impide.
+    expect(result.message).toContain("techo-madera");
+    expect(result.message).toMatch(/techo-madera \(/);
+  });
+
+  it("marca con ✓ la barrera que el recinto sostiene", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
+
+    const result = await run(registry, "compose environment cabana");
+
+    expect(result.message).toContain("techo-madera ✓");
+  });
+
+  it("con la escena vacía sugiere empezar por un sonido", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
+
+    const result = await run(registry, "reset");
+
+    expect(result.message).toContain("play");
+    expect(result.message).toContain("rain");
+  });
+
+  it("no aparece tras órdenes que no cambian la escena", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
+
+    for (const input of ["help", "list", "status", "clear", "compose list", "scene list"]) {
+      const result = await run(registry, input);
+      expect(result.message, `"${input}" no debería sugerir`).not.toContain("siguiente ·");
+    }
+  });
+
+  it("no aparece cuando la orden falla", async () => {
+    const registry = buildRegistry();
+
+    const result = await run(registry, "compose distance rain 50");
+
+    expect(result.kind).toBe("error");
+    expect(result.message).not.toContain("siguiente ·");
+  });
+
+  it("la advertencia de afinidad convive con la sugerencia", async () => {
+    const registry = buildRegistry();
+    await run(registry, "play rain");
+    await run(registry, "compose environment campo-abierto");
+
+    const result = await run(registry, "compose occlusion techo-madera");
+
     expect(result.kind).toBe("response");
-    const status = await run(registry, "compose status");
-    expect(status.message).toContain("cabana");
-    expect(status.message).toContain("rain");
-    expect(status.message).toContain("wind");
+    expect(result.message).toContain("Afinidad baja");
+    expect(result.message).toContain("siguiente ·");
   });
 });

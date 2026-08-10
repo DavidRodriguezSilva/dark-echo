@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import type { AmbientMixer, MixSnapshot } from "../audio/ambientMixer";
+import type { CompositionEngine, MixSnapshot } from "../audio/composition/compositionEngine";
 import type { AppearanceStore } from "../platform/appearance";
 import { findTheme } from "../domain/themes";
 import { Button } from "./primitives/button";
@@ -8,7 +8,7 @@ import { SlidersHorizontal } from "lucide-react";
 /**
  * Barra de estado persistente y minima, estilo statusline (command-console,
  * "Panel de estado del sistema"): una sola linea, sin aspecto de tarjeta,
- * anclada arriba de la linea de entrada. Se suscribe a `AmbientMixer` y a
+ * anclada arriba de la linea de entrada. Se suscribe a `CompositionEngine` y a
  * `AppearanceStore` con `useSyncExternalStore` (design.md D7), asi que
  * nunca puede mostrar algo distinto de lo que realmente suena o del tema
  * vigente.
@@ -31,17 +31,17 @@ function schemeLabel(scheme: "dark" | "light" | "auto"): string {
 }
 
 export function StatusBar({
-  mixer,
+  engine,
   appearance,
   controlsVisible,
   onToggleControls,
 }: {
-  mixer: AmbientMixer;
+  engine: CompositionEngine;
   appearance: AppearanceStore;
   controlsVisible: boolean;
   onToggleControls: () => void;
 }) {
-  const snapshot = useSyncExternalStore(mixer.subscribe, mixer.getSnapshot);
+  const snapshot = useSyncExternalStore(engine.subscribe, engine.getSnapshot);
   const preference = useSyncExternalStore(appearance.subscribe, appearance.getSnapshot);
   const theme = findTheme(preference.themeId);
 

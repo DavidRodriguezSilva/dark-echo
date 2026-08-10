@@ -25,8 +25,8 @@ interface OutputLine {
 
 const WELCOME_LINES: OutputLine[] = [
   "dark-echo genera ambientes sonoros procedurales —lluvia, viento, río y mar— completamente offline, sin grabaciones.",
-  "Todo se controla escribiendo comandos, como en una terminal.",
-  'Escribí "help" para ver la lista completa, o "help <comando>" para el detalle de uno.',
+  '"play", "add" y "remove" gobiernan qué suena; "compose" dónde suena: el recinto, la barrera y la distancia.',
+  'Cada orden te sugiere qué podés combinar a continuación. Escribí "help" para la lista completa.',
 ].map((text) => ({ kind: "response", text }));
 
 function lineClassName(kind: OutputLine["kind"]): string {

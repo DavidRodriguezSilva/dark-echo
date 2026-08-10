@@ -1099,9 +1099,13 @@ muy por debajo del presupuesto del 40%.
   esta medición, el número se fija por **criterio de producto** en lugar de
   por presupuesto agotado: **8** capas simultáneas, un límite pensado para
   que una consola de mezcla siga siendo manejable para una persona, no
-  porque el hardware lo exija. Se revisa si una medición en un dispositivo
-  real de gama baja (pendiente, requiere hardware — ver tarea 15.5) muestra
-  lo contrario.
+  porque el hardware lo exija.
+
+> **Histórico.** Esta medición y su límite de 8 capas corresponden al motor
+> de ambientes, retirado en `retire-legacy-engine`. Se conserva porque
+> documenta cómo se midió y por qué el límite era de producto y no de
+> hardware, pero **el presupuesto vigente es el del motor de composición**,
+> más abajo.
 
 #### Presupuesto del motor de composición
 

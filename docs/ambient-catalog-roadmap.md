@@ -35,13 +35,17 @@ de alcance"); este documento es su seguimiento, ambiente por ambiente.
 
 ## Motor de composición
 
-Además del motor actual, que es el que reproduce todo el catálogo de arriba,
-existe un **segundo motor de composición** que ensambla una escena a partir de
-componentes independientes en lugar de ambientes cerrados: uno o varios
-`Source`, un `Environment` (recinto), una `Occlusion` (barrera) y `Modifiers`
-(distancia). Se alcanza por su propio comando (`compose`), no por
-`play`/`add`/`remove`, y **no altera nada de lo anterior** — ver los changes
-`add-ambient-composition-engine` (piloto) y `add-multi-source-composition`.
+Todo el audio se reproduce por un **único motor**, que ensambla una escena a
+partir de componentes independientes en lugar de ambientes cerrados: uno o
+varios `Source`, un `Environment` (recinto), una `Occlusion` (barrera) y
+`Modifiers` (distancia). El motor de ambientes anterior se retiró en
+`retire-legacy-engine`, tras confirmarse por escucha A/B que ambos sonaban
+igual — ver también `add-ambient-composition-engine` (piloto) y
+`add-multi-source-composition`.
+
+El reparto de comandos sigue esa estructura: `play`/`add`/`remove` gobiernan
+**qué** suena, y `compose environment|occlusion|modifier|distance`, **dónde**
+suena.
 
 | Familia       | Disponible                                                        |
 | ------------- | ----------------------------------------------------------------- |
@@ -60,7 +64,8 @@ cómputo medido está en `docs/synthesis-reference.md`.
 Lo que sigue pendiente: hacer variable la **intensidad** de un `Source` —hoy
 las densidades y ganancias de cada ambiente son fijas, así que el peldaño "con
 distintos niveles de intensidad" de la composición progresiva no se puede
-ejercitar— y la retirada del motor actual, que es un change aparte.
+ejercitar— y caracterizar los defectos que la escucha A/B detectó, que son de
+los ambientes y no del motor: sonaban igual por las dos rutas.
 
 ### Relectura de esta hoja de ruta a la luz del modelo de composición
 

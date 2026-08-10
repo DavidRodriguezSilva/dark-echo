@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { Monitor, Moon, Play, Square, Sun, Volume2 } from "lucide-react";
-import type { AmbientMixer } from "../audio/ambientMixer";
+import type { CompositionEngine } from "../audio/composition/compositionEngine";
 import type { AppearanceStore } from "../platform/appearance";
 import { listThemes } from "../domain/themes";
 import { Button } from "./primitives/button";
@@ -29,13 +29,13 @@ const SCHEMES = [
  * falta duplicar colores en JS para poder previsualizarlos.
  */
 export function TouchControls({
-  mixer,
+  engine,
   appearance,
 }: {
-  mixer: AmbientMixer;
+  engine: CompositionEngine;
   appearance: AppearanceStore;
 }) {
-  const snapshot = useSyncExternalStore(mixer.subscribe, mixer.getSnapshot);
+  const snapshot = useSyncExternalStore(engine.subscribe, engine.getSnapshot);
   const preference = useSyncExternalStore(appearance.subscribe, appearance.getSnapshot);
   const { mix } = snapshot;
   const isPlaying = mix.kind === "playing";
@@ -44,11 +44,11 @@ export function TouchControls({
 
   function handlePlayToggle() {
     if (isPlaying) {
-      mixer.stop();
+      engine.stop();
     } else if (isSuspended) {
-      void mixer.resumeSuspended();
+      void engine.resumeSuspended();
     } else {
-      void mixer.play();
+      void engine.play();
     }
   }
 
@@ -73,7 +73,7 @@ export function TouchControls({
           min={0}
           max={1}
           step={0.01}
-          onValueChange={([value]) => mixer.setMasterVolume(value)}
+          onValueChange={([value]) => engine.setMasterVolume(value)}
           aria-label="Volumen maestro"
         />
       </div>

@@ -4,7 +4,7 @@ import { listThemes, type Scheme } from "../domain/themes";
 /**
  * Aplica y persiste la apariencia (theming, "Persistencia y preferencia
  * inicial del tema"; "Selección de tema en caliente"). Sigue el mismo
- * patrón que `AmbientMixer` (design.md D7): un store observable propio,
+ * patrón que `CompositionEngine` (design.md D7): un store observable propio,
  * mutado imperativamente por comandos o controles táctiles, al que React
  * se suscribe con `useSyncExternalStore`.
  *

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { AmbientMixer } from "../audio/ambientMixer";
 import { CompositionEngine } from "../audio/composition/compositionEngine";
 import { AppearanceStore } from "../platform/appearance";
 import { listThemes } from "../domain/themes";
@@ -33,16 +32,6 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     sceneStoreRef.current = new SceneStore(notices);
   }
 
-  const mixerRef = useRef<AmbientMixer | null>(null);
-  if (!mixerRef.current) {
-    const config = readConfig(notices);
-    const lastMix = readLastMix(notices);
-    mixerRef.current = new AmbientMixer({
-      masterVolume: config.masterVolume,
-      composition: lastMix?.layers,
-    });
-  }
-
   const appearanceRef = useRef<AppearanceStore | null>(null);
   if (!appearanceRef.current) {
     appearanceRef.current = new AppearanceStore();
@@ -50,7 +39,12 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
 
   const compositionRef = useRef<CompositionEngine | null>(null);
   if (!compositionRef.current) {
-    compositionRef.current = new CompositionEngine();
+    const config = readConfig(notices);
+    const lastMix = readLastMix(notices);
+    compositionRef.current = new CompositionEngine({
+      masterVolume: config.masterVolume,
+      composition: lastMix,
+    });
   }
 
   const registryRef = useRef<ReturnType<typeof createCommandRegistry> | null>(null);
@@ -63,7 +57,7 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     const sceneController: SceneController = {
       list: () => sceneStoreRef.current!.list(),
       save: (name, overwrite) => {
-        const composition = mixerRef.current!.getComposition();
+        const composition = compositionRef.current!.getComposition();
         if (!composition) {
           return { ok: false, message: "No hay mezcla activa que guardar." };
         }
@@ -89,7 +83,7 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
             names.length > 0 ? ` Disponibles: ${names.join(", ")}.` : " No hay ninguna guardada.";
           return { ok: false, message: `No existe la escena "${name}".${available}` };
         }
-        return mixerRef.current!.loadComposition(scene);
+        return compositionRef.current!.loadComposition(scene);
       },
       remove: (name) => {
         const removed = sceneStoreRef.current!.remove(name);
@@ -103,11 +97,10 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
       apply: () => updateStore.apply(),
     };
     registryRef.current = createCommandRegistry(
-      mixerRef.current,
+      compositionRef.current,
       appearanceController,
       sceneController,
-      updateController,
-      compositionRef.current
+      updateController
     );
   }
 
@@ -117,13 +110,13 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
   // PWA, asi que la ultima escritura antes de cerrar es, por construccion,
   // el estado que se restaura al volver a abrir.
   useEffect(() => {
-    const mixer = mixerRef.current!;
+    const engine = compositionRef.current!;
     const persist = () => {
-      const snapshot = mixer.getSnapshot();
+      const snapshot = engine.getSnapshot();
       writeConfig({ masterVolume: snapshot.masterVolume }, notices);
-      writeLastMix(mixer.getComposition(), notices);
+      writeLastMix(engine.getComposition(), notices);
     };
-    return mixer.subscribe(persist);
+    return engine.subscribe(persist);
   }, [notices]);
 
   // Actualizacion no disruptiva (offline-playback): la decision se toma en
@@ -136,7 +129,7 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     return updateStore.subscribe(() => {
       if (!updateStore.getSnapshot()) return;
 
-      const mix = mixerRef.current!.getSnapshot().mix;
+      const mix = compositionRef.current!.getSnapshot().mix;
       if (mix.kind === "empty") {
         updateStore.apply();
         return;
@@ -153,10 +146,10 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     <main className="flex h-dvh w-full flex-col">
       <Console registry={registryRef.current} notices={notices} />
       {controlsVisible && (
-        <TouchControls mixer={mixerRef.current} appearance={appearanceRef.current} />
+        <TouchControls engine={compositionRef.current} appearance={appearanceRef.current} />
       )}
       <StatusBar
-        mixer={mixerRef.current}
+        engine={compositionRef.current}
         appearance={appearanceRef.current}
         controlsVisible={controlsVisible}
         onToggleControls={() => setControlsVisible((visible) => !visible)}

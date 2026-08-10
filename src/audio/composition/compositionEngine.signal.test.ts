@@ -1,13 +1,12 @@
 import { beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { AmbientMixer } from "../ambientMixer";
 import { resetAudioContextForTests } from "../context";
 import { CompositionEngine, MAX_COMPOSITION_LAYERS } from "./compositionEngine";
 
 /**
- * Verifica la semántica del motor de composición (capacidad
- * `ambient-composition-engine`) contra un `AudioContext` real, igual que
- * `audio/ambientMixer.signal.test.ts` verifica el motor actual — porque
- * `CompositionEngine` llama a `getAudioContext()` y crea nodos reales.
+ * Verifica la semántica del motor único (capacidad
+ * `ambient-composition-engine`) contra un `AudioContext` real: es obligado,
+ * porque `CompositionEngine` llama a `getAudioContext()` y crea nodos de Web
+ * Audio de verdad, que en Node no existen.
  */
 
 beforeAll(async () => {
@@ -157,7 +156,7 @@ describe("CompositionEngine — varios Source simultáneos", () => {
   it("rechaza el Source que no cabe y deja la escena en curso intacta", async () => {
     // El limite por defecto esta fijado para que el catalogo entero quepa
     // justo, asi que se prueba la guarda con un limite bajo explicito.
-    const engine = new CompositionEngine(4);
+    const engine = new CompositionEngine(undefined, 4);
     await engine.activateSource("rain"); // 3 capas
     await engine.activateSource("wind"); // 1 capa -> 4, en el limite
 
@@ -173,7 +172,7 @@ describe("CompositionEngine — varios Source simultáneos", () => {
   });
 
   it("un Source que sí cabe se acepta con el mismo límite", async () => {
-    const engine = new CompositionEngine(4);
+    const engine = new CompositionEngine(undefined, 4);
     await engine.activateSource("rain");
 
     const result = await engine.activateSource("white-noise");
@@ -225,46 +224,10 @@ describe("CompositionEngine — estado observable", () => {
   });
 });
 
-describe("CompositionEngine — coexistencia con el motor actual (design.md D1)", () => {
-  it("activar rain en el motor de composición no altera una mezcla ya sonando en AmbientMixer", async () => {
-    const mixer = new AmbientMixer();
-    await mixer.play("rain");
-    const mixerLayersBefore = [...mixer.activeLayerIds].sort();
-
-    const composition = new CompositionEngine();
-    await composition.activateSource("rain");
-
-    expect([...mixer.activeLayerIds].sort()).toEqual(mixerLayersBefore);
-    expect(composition.activeSourceIds).toEqual(["rain"]);
-  });
-
-  it("detener la composición no afecta lo que AmbientMixer tiene sonando", async () => {
-    const mixer = new AmbientMixer();
-    await mixer.play("rain");
-
-    const composition = new CompositionEngine();
-    await composition.activateSource("rain");
-    composition.stop();
-
-    expect(mixer.activeLayerIds.length).toBeGreaterThan(0);
-  });
-
-  it("play de rain en AmbientMixer sigue sonando exactamente igual: mismas capas, mismo id por capa (prueba de humo 1.3)", async () => {
-    const mixer = new AmbientMixer();
-
-    const result = await mixer.play("rain");
-
-    expect(result.ok).toBe(true);
-    expect([...mixer.activeLayerIds].sort()).toEqual(
-      ["rain.cuerpo", "rain.impactos", "rain.goteo"].sort()
-    );
-  });
-});
-
 describe("CompositionEngine — estado", () => {
   it("status describe los Source activos o su ausencia", async () => {
     const engine = new CompositionEngine();
-    expect(engine.status()).toBe("Motor de composición: sin nada activo.");
+    expect(engine.status()).toBe("No hay reproducción en curso.");
 
     await engine.activateSource("rain");
     await engine.activateSource("wind");
@@ -489,7 +452,7 @@ describe("CompositionEngine — Modifier por Source (grupo 5)", () => {
 });
 
 describe("CompositionEngine — desmontaje de la escena (grupo 7, tarea 7.2)", () => {
-  it("stop retira los cuatro componentes a la vez", async () => {
+  it("stop desmonta los cuatro componentes y conserva la escena para reanudarla", async () => {
     const engine = new CompositionEngine();
     await engine.activateSource("rain");
     await engine.activateEnvironment("cabana");
@@ -499,11 +462,13 @@ describe("CompositionEngine — desmontaje de la escena (grupo 7, tarea 7.2)", (
     const result = engine.stop();
 
     expect(result.ok).toBe(true);
-    expect(engine.getSnapshot()).toEqual({
-      sources: [],
-      environment: null,
-      occlusion: null,
-    });
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.sources).toEqual([]);
+    expect(snapshot.environment).toBeNull();
+    expect(snapshot.occlusion).toBeNull();
+    // No desaparece: queda conservada y reanudable (command-console,
+    // "`stop` conserva la composición").
+    expect(snapshot.mix.kind).toBe("stopped");
   });
 
   it("retirar los componentes uno a uno deja el Source intacto en cada paso", async () => {
@@ -520,20 +485,302 @@ describe("CompositionEngine — desmontaje de la escena (grupo 7, tarea 7.2)", (
     expect(engine.activeSourceIds).toEqual(["rain"]);
 
     engine.deactivateEnvironment();
-    expect(engine.getSnapshot()).toEqual({
-      sources: [{ id: "rain", modifier: null }],
-      environment: null,
-      occlusion: null,
-    });
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.sources).toEqual([{ id: "rain", modifier: null }]);
+    expect(snapshot.environment).toBeNull();
+    expect(snapshot.occlusion).toBeNull();
   });
 
-  it("stop tambien desmonta una escena sin Source pero con componentes activos", async () => {
+  it("stop sin nada sonando informa, aunque haya componentes de escena activos", async () => {
     const engine = new CompositionEngine();
     await engine.activateEnvironment("cabana");
 
+    // `stop` actúa sobre la reproducción, y un Environment sin Source no
+    // produce sonido: no hay nada que detener. Vaciar la escena es `reset`.
     const result = engine.stop();
 
+    expect(result.ok).toBe(false);
+    expect(engine.getSnapshot().environment).toEqual({ id: "cabana" });
+  });
+
+  it("reset vacía la escena entera sin conservar nada", async () => {
+    const engine = new CompositionEngine();
+    await engine.activateSource("rain");
+    await engine.activateEnvironment("cabana");
+
+    const result = engine.reset();
+
     expect(result.ok).toBe(true);
-    expect(engine.getSnapshot().environment).toBeNull();
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.sources).toEqual([]);
+    expect(snapshot.environment).toBeNull();
+    expect(snapshot.mix.kind).toBe("empty");
+  });
+});
+
+/**
+ * Ciclo de reproducción absorbido del motor de ambientes retirado
+ * (`retire-legacy-engine`, grupo 1). Los escenarios se trasladaron desde el
+ * test de aquel motor en vez de escribirse de cero, para no perder cobertura
+ * por el camino: son requisitos vigentes de `command-console`,
+ * `session-persistence` y `offline-playback`, no comportamiento nuevo.
+ */
+describe("CompositionEngine — play/add: sustituir frente a acumular", () => {
+  it("play con argumento sustituye la mezcla anterior", async () => {
+    const engine = new CompositionEngine();
+    await engine.add("rain");
+    await engine.add("wind");
+
+    const result = await engine.play("ocean");
+
+    expect(result.ok).toBe(true);
+    expect(engine.activeSourceIds).toEqual(["ocean"]);
+  });
+
+  it("add acumula sin retirar lo que ya suena", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+
+    const result = await engine.add("wind");
+
+    expect(result.ok).toBe(true);
+    expect(engine.activeSourceIds).toEqual(["rain", "wind"]);
+  });
+
+  it("play rechaza un ambiente inexistente sin tocar la mezcla", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+
+    const result = await engine.play("volcan");
+
+    expect(result.ok).toBe(false);
+    expect(engine.activeSourceIds).toEqual(["rain"]);
+  });
+});
+
+describe("CompositionEngine — stop conserva y play reanuda", () => {
+  it("stop y play devuelven las mismas capas con los mismos volúmenes", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+    engine.setLayerVolume("rain.cuerpo", 0.3);
+    const antes = engine.getSnapshot().mix;
+    const capasAntes =
+      antes.kind === "playing" ? [...antes.layers].sort((a, b) => a.id.localeCompare(b.id)) : [];
+
+    engine.stop();
+    expect(engine.getSnapshot().mix.kind).toBe("stopped");
+
+    const result = await engine.play();
+
+    expect(result.ok).toBe(true);
+    const despues = engine.getSnapshot().mix;
+    const capasDespues =
+      despues.kind === "playing"
+        ? [...despues.layers].sort((a, b) => a.id.localeCompare(b.id))
+        : [];
+    expect(capasDespues).toEqual(capasAntes);
+  });
+
+  it("stop conserva también el recinto, la barrera y la distancia", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+    await engine.activateEnvironment("cabana");
+    await engine.activateOcclusion("techo-madera");
+    await engine.activateModifier("rain", "distancia", 40);
+
+    engine.stop();
+    await engine.play();
+
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.environment).toEqual({ id: "cabana" });
+    expect(snapshot.occlusion).toEqual({ id: "techo-madera" });
+    expect(snapshot.sources[0].modifier).toEqual({ id: "distancia", distanceMeters: 40 });
+  });
+
+  it("reset vacía la mezcla conservada: play no tiene nada que reanudar", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+    engine.stop();
+
+    engine.reset();
+    const result = await engine.play();
+
+    expect(result.ok).toBe(false);
+    expect(engine.getSnapshot().mix.kind).toBe("empty");
+  });
+});
+
+describe("CompositionEngine — volumen por capa y por Source", () => {
+  it("volume sobre una capa solo cambia esa capa", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+
+    const result = engine.setLayerVolume("rain.cuerpo", 0.2);
+
+    expect(result.ok).toBe(true);
+    const mix = engine.getSnapshot().mix;
+    const layers = mix.kind === "playing" ? mix.layers : [];
+    expect(layers.find((l) => l.id === "rain.cuerpo")?.volume).toBe(0.2);
+    expect(layers.find((l) => l.id === "rain.impactos")?.volume).not.toBe(0.2);
+  });
+
+  it("volume sobre un Source entero cambia todas sus capas", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+
+    const result = engine.setLayerVolume("rain", 0.4);
+
+    expect(result.ok).toBe(true);
+    const mix = engine.getSnapshot().mix;
+    const layers = mix.kind === "playing" ? mix.layers : [];
+    expect(layers.every((l) => l.volume === 0.4)).toBe(true);
+  });
+
+  it("volume sobre algo que no suena informa en vez de callar", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+
+    expect(engine.setLayerVolume("ocean", 0.5).ok).toBe(false);
+    expect(engine.setLayerVolume("rain.inexistente", 0.5).ok).toBe(false);
+  });
+
+  it("rechaza un volumen fuera de rango", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+
+    expect(engine.setLayerVolume("rain", 1.5).ok).toBe(false);
+    expect(engine.setMasterVolume(-1).ok).toBe(false);
+  });
+});
+
+describe("CompositionEngine — remove de capa o de Source", () => {
+  it("remove de una capa deja las demás del mismo Source sonando", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+
+    const result = engine.removeTarget("rain.goteo");
+
+    expect(result.ok).toBe(true);
+    expect(engine.activeLayerIds.sort()).toEqual(["rain.cuerpo", "rain.impactos"]);
+  });
+
+  it("remove del último resto de un Source lo retira entero", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("wind"); // una sola capa
+
+    const result = engine.removeTarget("wind.cuerpo");
+
+    expect(result.ok).toBe(true);
+    expect(engine.activeSourceIds).toEqual([]);
+  });
+
+  it("remove de un Source entero retira todas sus capas", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+    await engine.add("wind");
+
+    const result = engine.removeTarget("rain");
+
+    expect(result.ok).toBe(true);
+    expect(engine.activeSourceIds).toEqual(["wind"]);
+  });
+});
+
+describe("CompositionEngine — escena guardada (session-persistence)", () => {
+  it("getComposition captura capas, volúmenes y componentes de escena", async () => {
+    const engine = new CompositionEngine();
+    await engine.play("rain");
+    await engine.activateEnvironment("casa");
+    await engine.activateOcclusion("ventana-vidrio");
+    await engine.activateModifier("rain", "distancia", 25);
+    engine.setLayerVolume("rain.cuerpo", 0.35);
+
+    const scene = engine.getComposition()!;
+
+    expect(scene.layers["rain.cuerpo"]).toBe(0.35);
+    expect(scene.environment).toBe("casa");
+    expect(scene.occlusion).toBe("ventana-vidrio");
+    expect(scene.modifiers?.rain).toEqual({ id: "distancia", meters: 25 });
+  });
+
+  it("loadComposition restaura la escena completa", async () => {
+    const engine = new CompositionEngine();
+
+    const result = await engine.loadComposition({
+      layers: { "rain.cuerpo": 0.5, "wind.cuerpo": 0.3 },
+      environment: "cabana",
+      occlusion: "techo-madera",
+      modifiers: { rain: { id: "distancia", meters: 60 } },
+    });
+
+    expect(result.ok).toBe(true);
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.environment).toEqual({ id: "cabana" });
+    expect(snapshot.occlusion).toEqual({ id: "techo-madera" });
+    expect(snapshot.sources.find((s) => s.id === "rain")?.modifier?.distanceMeters).toBe(60);
+    expect(engine.activeLayerIds.sort()).toEqual(["rain.cuerpo", "wind.cuerpo"]);
+  });
+
+  it("carga una escena del formato anterior, sin componentes de escena", async () => {
+    const engine = new CompositionEngine();
+
+    // Formato v1: solo capas y volúmenes, sin los campos añadidos después.
+    const result = await engine.loadComposition({
+      layers: { "rain.cuerpo": 0.5, "rain.impactos": 0.4 },
+    });
+
+    expect(result.ok).toBe(true);
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.environment).toBeNull();
+    expect(snapshot.occlusion).toBeNull();
+    expect(engine.activeLayerIds.sort()).toEqual(["rain.cuerpo", "rain.impactos"]);
+  });
+
+  it("carga un subconjunto de las capas de un ambiente, no el ambiente entero", async () => {
+    const engine = new CompositionEngine();
+
+    await engine.loadComposition({ layers: { "rain.cuerpo": 0.5 } });
+
+    expect(engine.activeLayerIds).toEqual(["rain.cuerpo"]);
+  });
+
+  it("rechaza una escena que excede el límite de capas", async () => {
+    const engine = new CompositionEngine(undefined, 2);
+
+    const result = await engine.loadComposition({
+      layers: { "rain.cuerpo": 1, "rain.impactos": 1, "rain.goteo": 1 },
+    });
+
+    expect(result.ok).toBe(false);
+  });
+});
+
+describe("CompositionEngine — restauración de la última mezcla", () => {
+  it("arranca en estado detenido con la mezcla restaurada, sin sonar", () => {
+    const engine = new CompositionEngine({
+      composition: { layers: { "rain.cuerpo": 0.5 } },
+      masterVolume: 0.7,
+    });
+
+    const snapshot = engine.getSnapshot();
+    expect(snapshot.mix.kind).toBe("stopped");
+    expect(engine.activeSourceIds).toEqual([]);
+    expect(snapshot.masterVolume).toBe(0.7);
+  });
+
+  it("una sola acción basta para reanudar la mezcla restaurada", async () => {
+    const engine = new CompositionEngine({
+      composition: { layers: { "rain.cuerpo": 0.5 } },
+    });
+
+    const result = await engine.play();
+
+    expect(result.ok).toBe(true);
+    expect(engine.activeLayerIds).toEqual(["rain.cuerpo"]);
+  });
+
+  it("sin mezcla previa arranca vacío", () => {
+    const engine = new CompositionEngine();
+    expect(engine.getSnapshot().mix.kind).toBe("empty");
   });
 });

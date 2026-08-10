@@ -1,38 +1,83 @@
-import type { AmbientMixer } from "../audio/ambientMixer";
 import {
   listCompositionSourceIds,
   type CompositionEngine,
 } from "../audio/composition/compositionEngine";
 import { listAmbients } from "../domain/catalog";
 import { listEnvironments, listModifiers, listOcclusions } from "../domain/composition/catalog";
+import { suggestNext, type SuggestionGroup } from "../domain/composition/suggestions";
 import { CommandRegistry } from "./registry";
 import type { CommandDescriptor, CommandResult } from "./types";
 import { commandHelp, generalHelp } from "./help";
 
-function fromMixerResult(result: { ok: boolean; message: string }): CommandResult {
+/**
+ * Registro de comandos sobre el motor único (`retire-legacy-engine`).
+ *
+ * El reparto de verbos sigue la decisión D1 de ese change: `play`, `add`,
+ * `remove`, `stop`, `reset` y `volume` gobiernan **los sonidos** —qué suena y
+ * a qué volumen—, mientras que `compose …` gobierna **el espacio donde
+ * suenan**. Ninguna acción es alcanzable por dos caminos: no hay
+ * `compose source` que duplique a `add`, ni `compose stop` que duplique a
+ * `stop`.
+ */
+
+function fromResult(result: { ok: boolean; message: string }): CommandResult {
   return { kind: result.ok ? "response" : "error", message: result.message };
 }
 
 /**
- * Igual que `fromMixerResult`, pero adjunta la advertencia de afinidad baja
- * del motor de composición cuando la hay (capacidad `command-console`,
- * "Advertencia de compatibilidad no bloqueante").
+ * Formatea la sugerencia contextual (`command-console`, "Sugerencia
+ * contextual de composición").
  *
- * La advertencia acompaña a la confirmación de que la orden se ejecutó: no
- * es un `kind: "error"` ni una segunda confirmación, porque la combinación
- * de baja afinidad **sí se aplica** — el sistema informa, no impide
- * (design.md D5).
+ * Las opciones de baja afinidad se marcan pero no se ocultan (design.md D6):
+ * si el sistema las acepta, esconderlas contradiría la decisión de advertir
+ * sin bloquear.
  */
-function fromCompositionResult(result: {
-  ok: boolean;
-  message: string;
-  warning?: string;
-}): CommandResult {
+function formatSuggestion(groups: SuggestionGroup[]): string {
+  if (groups.length === 0) return "";
+
+  const lines = groups.map((group, index) => {
+    const prefix = index === 0 ? "siguiente ·" : "          ·";
+    const options = group.options
+      .map((option) => {
+        if (option.fits === true) return `${option.id} ✓`;
+        if (option.fits === false) return `${option.id} (${option.note ?? "poco afín"})`;
+        return option.id;
+      })
+      .join(", ");
+    const usage = group.hint ? `${group.command} ${group.hint}` : group.command;
+    return `${prefix} ${usage}\n              ${options}`;
+  });
+
+  return lines.join("\n");
+}
+
+/**
+ * Adjunta la sugerencia a una respuesta. Se usa **solo** en las órdenes que
+ * cambian la composición de la escena (design.md D7): sugerir en cada línea
+ * —incluidas `help`, `list` o `clear`, que no cambian qué suena— convertiría
+ * el aviso en ruido, y el ruido se deja de leer.
+ */
+function withSuggestion(
+  result: { ok: boolean; message: string; warning?: string },
+  composition: CompositionEngine
+): CommandResult {
   if (!result.ok) return { kind: "error", message: result.message };
-  return {
-    kind: "response",
-    message: result.warning ? `${result.message}\n${result.warning}` : result.message,
-  };
+
+  const snapshot = composition.getSnapshot();
+  const suggestion = formatSuggestion(
+    suggestNext({
+      sourceIds: snapshot.sources.map((source) => source.id),
+      environmentId: snapshot.environment?.id ?? null,
+      occlusionId: snapshot.occlusion?.id ?? null,
+      modifiedSourceIds: snapshot.sources.filter((s) => s.modifier).map((s) => s.id),
+    })
+  );
+
+  const parts = [result.message];
+  if (result.warning) parts.push(result.warning);
+  if (suggestion) parts.push("", suggestion);
+
+  return { kind: "response", message: parts.join("\n") };
 }
 
 /**
@@ -49,8 +94,7 @@ export interface AppearanceController {
 /**
  * Lo que el comando `scene` necesita de la persistencia de escenas
  * (session-persistence, "Gestion de escenas sonoras"), inyectado por ui/
- * igual que `AppearanceController`, para que `commands/` no dependa de
- * `platform/` directamente.
+ * igual que `AppearanceController`.
  */
 export interface SceneController {
   list(): string[];
@@ -61,28 +105,18 @@ export interface SceneController {
 
 /**
  * Lo que el comando `update` necesita de la actualizacion de la aplicacion
- * (offline-playback, "Actualizacion no disruptiva"), inyectado por ui/
- * igual que los demas controladores.
+ * (offline-playback, "Actualizacion no disruptiva").
  */
 export interface UpdateController {
   isAvailable(): boolean;
   apply(): void;
 }
 
-/**
- * Construye el registro de comandos con sus handlers reales, sobre un
- * `AmbientMixer` (command-console, "Vocabulario de comandos y semantica de
- * la mezcla"), un `AppearanceController` (theming, "Selección de tema en
- * caliente"), un `SceneController` (session-persistence, "Gestion de
- * escenas sonoras") y un `UpdateController` (offline-playback,
- * "Actualizacion no disruptiva").
- */
 export function createCommandRegistry(
-  mixer: AmbientMixer,
+  composition: CompositionEngine,
   appearance: AppearanceController,
   scenes: SceneController,
-  update: UpdateController,
-  composition: CompositionEngine
+  update: UpdateController
 ): CommandRegistry {
   const registry = new CommandRegistry();
   const ambientIds = listAmbients().map((a) => a.id);
@@ -96,54 +130,44 @@ export function createCommandRegistry(
         "Reproduce un ambiente, sustituyendo la mezcla activa; sin argumento, reanuda la mezcla conservada tras stop.",
       forms: [{ args: [] }, { args: [{ name: "ambiente", type: "enum", values: ambientIds }] }],
       handler: async (args) =>
-        fromMixerResult(await mixer.play(args.ambiente as string | undefined)),
+        withSuggestion(await composition.play(args.ambiente as string | undefined), composition),
     },
     {
       name: "add",
       aliases: [],
       description: "Incorpora un ambiente a la mezcla activa sin retirar lo que ya suena.",
       forms: [{ args: [{ name: "ambiente", type: "enum", values: ambientIds }] }],
-      handler: async (args) => fromMixerResult(await mixer.add(args.ambiente as string)),
+      handler: async (args) =>
+        withSuggestion(await composition.add(args.ambiente as string), composition),
     },
     {
       name: "remove",
       aliases: [],
       description: "Retira una capa o un ambiente completo de la mezcla activa.",
       forms: [{ args: [{ name: "capa", type: "string" }] }],
-      handler: (args) => fromMixerResult(mixer.remove(args.capa as string)),
+      handler: (args) => withSuggestion(composition.removeTarget(args.capa as string), composition),
     },
     {
       name: "stop",
       aliases: [],
-      description: "Desvanece la reproducción, conservando la composición de la mezcla.",
+      description: "Desvanece la reproducción, conservando la composición de la escena.",
       forms: [{ args: [] }],
-      handler: () => fromMixerResult(mixer.stop()),
+      handler: () => fromResult(composition.stop()),
+    },
+    {
+      name: "reset",
+      aliases: [],
+      description: "Vacía la escena activa sin conservar nada.",
+      forms: [{ args: [] }],
+      handler: () => withSuggestion(composition.reset(), composition),
     },
     {
       name: "compose",
       aliases: [],
       description:
-        'Motor de composición: "compose source <id>" incorpora un Source (acumula sobre los que ya suenan), "compose remove <id>" retira uno y "compose source off" todos; "compose environment|occlusion <id|off>" activa o retira el componente compartido de la escena; "compose modifier <source> <tipo|off>" y "compose distance <source> <metros>" actúan sobre un Source concreto, que se nombra siempre; "compose volume <0-1>" ajusta su volumen maestro, "compose list" muestra los componentes disponibles, "compose status" la escena activa y "compose stop" la desmonta. Distinto de "play"/"add"/"remove", que operan el motor actual.',
+        'Componentes de la escena — dónde suena la mezcla, frente a "play"/"add"/"remove", que gobiernan qué suena. "compose environment <id|off>" fija el recinto, "compose occlusion <id|off>" la barrera, "compose modifier <sonido> <tipo|off>" y "compose distance <sonido> <metros>" actúan sobre un sonido concreto, "compose list" muestra los componentes disponibles y "compose status" la escena activa.',
       forms: [
-        { args: [{ name: "accion", type: "enum", values: ["status", "stop", "list"] }] },
-        {
-          args: [
-            { name: "accion", type: "enum", values: ["volume"] },
-            { name: "valor", type: "number", range: [0, 1] },
-          ],
-        },
-        {
-          args: [
-            { name: "accion", type: "enum", values: ["source"] },
-            { name: "id", type: "enum", values: [...listCompositionSourceIds(), "off"] },
-          ],
-        },
-        {
-          args: [
-            { name: "accion", type: "enum", values: ["remove"] },
-            { name: "id", type: "enum", values: listCompositionSourceIds() },
-          ],
-        },
+        { args: [{ name: "accion", type: "enum", values: ["status", "list"] }] },
         {
           args: [
             { name: "accion", type: "enum", values: ["environment"] },
@@ -182,74 +206,54 @@ export function createCommandRegistry(
           return { kind: "response", message: composition.status() };
         }
 
-        if (accion === "stop") {
-          return fromCompositionResult(composition.stop());
-        }
-
         if (accion === "list") {
           const section = (title: string, items: { id: string; label: string }[]) =>
             `${title}:\n${items.map((i) => `  ${i.id} — ${i.label}`).join("\n")}`;
           return {
             kind: "response",
             message: [
-              section("Sources", listAmbients()),
-              section("Environments", listEnvironments()),
-              section("Occlusions", listOcclusions()),
-              section("Modifiers", listModifiers()),
+              section("Recintos", listEnvironments()),
+              section("Barreras", listOcclusions()),
+              section("Modificadores", listModifiers()),
             ].join("\n"),
           };
         }
 
-        if (accion === "volume") {
-          return fromCompositionResult(composition.setMasterVolume(args.valor as number));
-        }
-
         if (accion === "distance") {
-          return fromCompositionResult(
+          return withSuggestion(
             await composition.activateModifier(
               args.source as string,
               "distancia",
               args.metros as number
-            )
+            ),
+            composition
           );
         }
 
         const id = args.id as string;
         const off = id === "off";
 
-        if (accion === "source") {
-          return fromCompositionResult(
-            off ? composition.deactivateSource() : await composition.activateSource(id)
-          );
-        }
-        if (accion === "remove") {
-          return fromCompositionResult(composition.deactivateSource(id));
-        }
         if (accion === "environment") {
-          return fromCompositionResult(
-            off ? composition.deactivateEnvironment() : await composition.activateEnvironment(id)
+          return withSuggestion(
+            off ? composition.deactivateEnvironment() : await composition.activateEnvironment(id),
+            composition
           );
         }
         if (accion === "occlusion") {
-          return fromCompositionResult(
-            off ? composition.deactivateOcclusion() : await composition.activateOcclusion(id)
+          return withSuggestion(
+            off ? composition.deactivateOcclusion() : await composition.activateOcclusion(id),
+            composition
           );
         }
 
         const sourceId = args.source as string;
-        return fromCompositionResult(
+        return withSuggestion(
           off
             ? composition.deactivateModifier(sourceId)
-            : await composition.activateModifier(sourceId, id)
+            : await composition.activateModifier(sourceId, id),
+          composition
         );
       },
-    },
-    {
-      name: "reset",
-      aliases: [],
-      description: "Vacía la mezcla activa.",
-      forms: [{ args: [] }],
-      handler: () => fromMixerResult(mixer.reset()),
     },
     {
       name: "volume",
@@ -265,10 +269,10 @@ export function createCommandRegistry(
         },
       ],
       handler: (args) =>
-        fromMixerResult(
+        fromResult(
           "capa" in args
-            ? mixer.setLayerVolume(args.capa as string, args.valor as number)
-            : mixer.setMasterVolume(args.valor as number)
+            ? composition.setLayerVolume(args.capa as string, args.valor as number)
+            : composition.setMasterVolume(args.valor as number)
         ),
     },
     {
@@ -286,9 +290,9 @@ export function createCommandRegistry(
     {
       name: "status",
       aliases: [],
-      description: "Muestra la mezcla activa y sus volúmenes.",
+      description: "Muestra la escena activa, sus volúmenes y sus componentes.",
       forms: [{ args: [] }],
-      handler: () => ({ kind: "response", message: mixer.status() }),
+      handler: () => ({ kind: "response", message: composition.status() }),
     },
     {
       name: "clear",
@@ -367,14 +371,15 @@ export function createCommandRegistry(
         const nombre = args.nombre as string;
 
         if (accion === "save") {
-          return fromMixerResult(scenes.save(nombre, "confirmacion" in args));
+          return fromResult(scenes.save(nombre, "confirmacion" in args));
         }
 
         if (accion === "load") {
-          return fromMixerResult(await scenes.load(nombre));
+          // Cargar una escena sí cambia la composición: lleva sugerencia.
+          return withSuggestion(await scenes.load(nombre), composition);
         }
 
-        return fromMixerResult(scenes.remove(nombre));
+        return fromResult(scenes.remove(nombre));
       },
     },
     {

@@ -1,4 +1,5 @@
 import { readVersioned, writeToStorage } from "./storage";
+import { SCENE_FORMAT_VERSION, SCENE_MIGRATIONS } from "./sceneMigrations";
 import type { Scene } from "../domain/scene";
 import type { SystemNoticeStore } from "./systemNotices";
 
@@ -18,7 +19,11 @@ export class SceneStore {
 
   constructor(notices?: SystemNoticeStore) {
     this.notices = notices;
-    const result = readVersioned<Record<string, Scene>>("dark-echo.scenes", 1);
+    const result = readVersioned<Record<string, Scene>>(
+      "dark-echo.scenes",
+      SCENE_FORMAT_VERSION,
+      SCENE_MIGRATIONS
+    );
     if (result.status === "ok" || result.status === "migrated") {
       this.scenes = result.data;
     } else {
@@ -58,7 +63,7 @@ export class SceneStore {
   }
 
   private persist(): void {
-    const persisted = writeToStorage("dark-echo.scenes", 1, this.scenes);
+    const persisted = writeToStorage("dark-echo.scenes", SCENE_FORMAT_VERSION, this.scenes);
     if (!persisted) {
       this.notices?.pushOnce(
         "scenes-write-denied",

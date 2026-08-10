@@ -34,7 +34,7 @@ export function randomSeed(): number {
  * (sesiones sucesivas no repiten desarrollo temporal); distinto id con la
  * misma base -> tambien distinta semilla (dos capas del mismo ambiente no
  * comparten secuencia). Extraida como funcion pura para poder testearla sin
- * un `AudioContext` real (usada por `audio/ambientMixer.ts`).
+ * un `AudioContext` real (usada por `audio/composition/compositionEngine.ts`).
  */
 export function deriveLayerSeed(sessionSeed: number, id: string): number {
   let hash = 0;

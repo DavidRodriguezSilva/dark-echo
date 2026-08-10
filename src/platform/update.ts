@@ -1,7 +1,7 @@
 /**
  * Disponibilidad de actualizacion (offline-playback, "Actualizacion no
  * disruptiva"): un store observable propio (design.md D7), igual que
- * `AmbientMixer`/`AppearanceStore`. `main.tsx` lo alimenta desde
+ * `CompositionEngine`/`AppearanceStore`. `main.tsx` lo alimenta desde
  * `onNeedRefresh` de `virtual:pwa-register`; `ui/App.tsx` decide, con el
  * estado de la mezcla en mano, si aplicarla enseguida o esperar a que el
  * usuario ejecute el comando `update`.
