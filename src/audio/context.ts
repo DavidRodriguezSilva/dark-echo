@@ -83,6 +83,20 @@ export async function getAudioContext(): Promise<AudioContextResult> {
 
 /** Solo para tests: descarta el contexto compartido entre ejemplos. */
 export function resetAudioContextForTests(): void {
+  const previous = sharedContext;
   sharedContext = null;
   modulesLoaded = null;
+
+  // Cerrarlo de verdad, no solo soltar la referencia: el navegador limita
+  // cuantos `AudioContext` pueden coexistir, y una suite que crea uno por
+  // ejemplo agota ese limite. Pasado el techo, `new AudioContext()` deja de
+  // arrancar y los ejemplos siguientes se quedan esperando indefinidamente
+  // -- fallan por tiempo agotado, sin relacion aparente con lo que prueban.
+  // El cierre es asincrono y no se espera: liberar el recurso empieza ya, y
+  // el ejemplo siguiente crea el suyo propio.
+  try {
+    void previous?.close().catch(() => {});
+  } catch {
+    // Ya estaba cerrado: nada que liberar.
+  }
 }

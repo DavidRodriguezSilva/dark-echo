@@ -123,7 +123,7 @@ export function createCommandRegistry(
       name: "compose",
       aliases: [],
       description:
-        'Motor de composición (piloto): "compose source|environment|occlusion|modifier <id|off>" activa o retira cada componente, "compose distance <metros>" mueve la distancia, "compose volume <0-1>" ajusta su volumen maestro, "compose list" muestra los componentes disponibles, "compose status" la escena activa y "compose stop" la desmonta. Distinto de "play"/"add"/"remove", que operan el motor actual.',
+        'Motor de composición: "compose source <id>" incorpora un Source (acumula sobre los que ya suenan), "compose remove <id>" retira uno y "compose source off" todos; "compose environment|occlusion <id|off>" activa o retira el componente compartido de la escena; "compose modifier <source> <tipo|off>" y "compose distance <source> <metros>" actúan sobre un Source concreto, que se nombra siempre; "compose volume <0-1>" ajusta su volumen maestro, "compose list" muestra los componentes disponibles, "compose status" la escena activa y "compose stop" la desmonta. Distinto de "play"/"add"/"remove", que operan el motor actual.',
       forms: [
         { args: [{ name: "accion", type: "enum", values: ["status", "stop", "list"] }] },
         {
@@ -136,6 +136,12 @@ export function createCommandRegistry(
           args: [
             { name: "accion", type: "enum", values: ["source"] },
             { name: "id", type: "enum", values: [...listCompositionSourceIds(), "off"] },
+          ],
+        },
+        {
+          args: [
+            { name: "accion", type: "enum", values: ["remove"] },
+            { name: "id", type: "enum", values: listCompositionSourceIds() },
           ],
         },
         {
@@ -157,12 +163,14 @@ export function createCommandRegistry(
         {
           args: [
             { name: "accion", type: "enum", values: ["modifier"] },
+            { name: "source", type: "enum", values: listCompositionSourceIds() },
             { name: "id", type: "enum", values: [...listModifiers().map((m) => m.id), "off"] },
           ],
         },
         {
           args: [
             { name: "accion", type: "enum", values: ["distance"] },
+            { name: "source", type: "enum", values: listCompositionSourceIds() },
             { name: "metros", type: "number", range: [1, 200] },
           ],
         },
@@ -184,10 +192,7 @@ export function createCommandRegistry(
           return {
             kind: "response",
             message: [
-              section(
-                "Sources",
-                listCompositionSourceIds().map((id) => ({ id, label: id }))
-              ),
+              section("Sources", listAmbients()),
               section("Environments", listEnvironments()),
               section("Occlusions", listOcclusions()),
               section("Modifiers", listModifiers()),
@@ -201,7 +206,11 @@ export function createCommandRegistry(
 
         if (accion === "distance") {
           return fromCompositionResult(
-            await composition.activateModifier("distancia", args.metros as number)
+            await composition.activateModifier(
+              args.source as string,
+              "distancia",
+              args.metros as number
+            )
           );
         }
 
@@ -213,6 +222,9 @@ export function createCommandRegistry(
             off ? composition.deactivateSource() : await composition.activateSource(id)
           );
         }
+        if (accion === "remove") {
+          return fromCompositionResult(composition.deactivateSource(id));
+        }
         if (accion === "environment") {
           return fromCompositionResult(
             off ? composition.deactivateEnvironment() : await composition.activateEnvironment(id)
@@ -223,8 +235,12 @@ export function createCommandRegistry(
             off ? composition.deactivateOcclusion() : await composition.activateOcclusion(id)
           );
         }
+
+        const sourceId = args.source as string;
         return fromCompositionResult(
-          off ? composition.deactivateModifier() : await composition.activateModifier(id)
+          off
+            ? composition.deactivateModifier(sourceId)
+            : await composition.activateModifier(sourceId, id)
         );
       },
     },

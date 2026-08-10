@@ -33,28 +33,34 @@ de alcance"); este documento es su seguimiento, ambiente por ambiente.
 | Bibliotecas                           | Pendiente de investigar                                                                    | Idem — ambiente de fondo muy tenue, ningún fenómeno dominante claro que investigar primero.                                                  |
 | Concentración / relajación / descanso | No aplica — no es un fenómeno nuevo                                                        | Previsiblemente escenas compuestas de ambientes ya existentes (ver `scene save`), no un modelo de síntesis nuevo.                            |
 
-## Motor de composición (piloto)
+## Motor de composición
 
 Además del motor actual, que es el que reproduce todo el catálogo de arriba,
 existe un **segundo motor de composición** que ensambla una escena a partir de
-componentes independientes en lugar de ambientes cerrados: un `Source`, un
-`Environment` (recinto), una `Occlusion` (barrera) y `Modifiers` (distancia).
-Se alcanza por su propio comando (`compose`), no por `play`/`add`/`remove`, y
-**no altera nada de lo anterior** — ver el change
-`add-ambient-composition-engine`.
+componentes independientes en lugar de ambientes cerrados: uno o varios
+`Source`, un `Environment` (recinto), una `Occlusion` (barrera) y `Modifiers`
+(distancia). Se alcanza por su propio comando (`compose`), no por
+`play`/`add`/`remove`, y **no altera nada de lo anterior** — ver los changes
+`add-ambient-composition-engine` (piloto) y `add-multi-source-composition`.
 
-Su alcance en esta entrega es un piloto deliberadamente estrecho:
-
-| Familia       | Disponible en el piloto                                           |
+| Familia       | Disponible                                                        |
 | ------------- | ----------------------------------------------------------------- |
-| `Source`      | Solo `rain` (reutiliza el ambiente ya existente, sin modificarlo) |
+| `Source`      | **Todo el catálogo de arriba**, derivado de `domain/catalog.ts`   |
 | `Environment` | `cabana`, `casa`, `campo-abierto`                                 |
 | `Occlusion`   | `techo-madera`, `techo-madera-grueso`, `ventana-vidrio`           |
-| `Modifier`    | `distancia`                                                       |
+| `Modifier`    | `distancia` — **uno por `Source`**, independiente entre `Source`s |
 
-Un segundo `Source` —el que de verdad demostraría que `Environment` y
-`Occlusion` se comparten entre varios a la vez— queda para un change
-posterior, igual que las interacciones cruzadas entre `Source`s.
+Varios `Source` pueden sonar a la vez, hasta un límite de **12 capas
+simultáneas** (lo que hace que el catálogo entero quepa justo); el
+`Environment` y la `Occlusion` son propiedades de la escena y alcanzan a
+todos los `Source` a la vez, mientras que los `Modifiers` pertenecen a un
+`Source` concreto y se nombran explícitamente al ajustarlos. El presupuesto de
+cómputo medido está en `docs/synthesis-reference.md`.
+
+Lo que sigue pendiente: hacer variable la **intensidad** de un `Source` —hoy
+las densidades y ganancias de cada ambiente son fijas, así que el peldaño "con
+distintos niveles de intensidad" de la composición progresiva no se puede
+ejercitar— y la retirada del motor actual, que es un change aparte.
 
 ### Relectura de esta hoja de ruta a la luz del modelo de composición
 

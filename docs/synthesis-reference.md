@@ -1131,10 +1131,41 @@ debajo del presupuesto del 40%.
 - **Cota del banco resonante**: el número de modos lo declara cada
   `Occlusion` (`modeCount`, 4–8), no lo decide el runtime — es la cota
   explícita del coste de ese camino, verificada por test.
-- **El límite de 8 capas simultáneas no aplica al motor nuevo**: no compone
-  capas, compone componentes (un `Source`, un `Environment`, una `Occlusion`,
-  un `Modifier`). El límite que sí tiene esta entrega es de arquitectura, no
-  de presupuesto: como mucho uno de cada.
+
+##### Escena multi-`Source` (change `add-multi-source-composition`, tarea 5.1)
+
+Levantada la restricción del piloto, la escena más cara que el motor admite
+es **el catálogo completo sonando a la vez**: sus siete ambientes suman 12
+capas, cada uno con su propia `ModifierStage` activa —siete etapas en vez de
+una, que es el coste que introdujo mover el `Modifier` de la escena al
+`Source`— más el `Environment` y la `Occlusion` compartidos.
+
+Medido sobre 30 s de audio, en las dos condiciones que ya usa la tabla del
+piloto (test aislado y suite de señal completa en paralelo):
+
+| Escena                                          | Capas | Etapas de `Modifier` | Aislada                  | Con la suite en paralelo  |
+| ----------------------------------------------- | ----- | -------------------- | ------------------------ | ------------------------- |
+| Piloto (`rain` + los tres moduladores)          | 3     | 1                    | ~0.044 (23× más rápido)  | ~0.074 (13.6× más rápido) |
+| Catálogo completo + `Environment` + `Occlusion` | 12    | 7                    | ~0.114 (8.7× más rápido) | ~0.160 (6.2× más rápido)  |
+
+La escena completa cuesta **~2.6×** la del piloto, para 4× las capas y 7× las
+etapas de `Modifier` — el reparto escala mejor que lineal porque el
+`Environment` y la `Occlusion`, que son la parte cara, se pagan una sola vez
+por escena y no por `Source`. Incluso en la condición pesimista sigue a 6×
+tiempo real.
+
+- **Número máximo de capas del motor de composición**: **12**. Como en el
+  motor actual, el coste no es el factor limitante —incluso la cifra
+  pesimista queda lejos del presupuesto del 40%—, así que el número se fija
+  por criterio de producto: es exactamente lo que hace falta para que el
+  catálogo entero quepa a la vez, sin dejar fuera ninguna combinación que el
+  usuario pueda querer. Se expresa **en capas y no en número de `Source`**
+  porque el coste lo determinan las capas: `wind` aporta una y `rain` tres.
+- **El límite de 8 capas del motor actual no se hereda**: son motores con
+  costes distintos por componente, y `synthesis-reference` exige medir en vez
+  de copiar. El límite propio se declara en
+  `MAX_COMPOSITION_LAYERS` (`audio/composition/compositionEngine.ts`) y se
+  verifica por test contra esta medición.
 
 ### Criterios de imagen estéreo
 
