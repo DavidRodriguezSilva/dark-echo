@@ -137,7 +137,7 @@ Conmutar de modo MUST NOT alterar el estado de la reproducción: ninguna capa SH
 - **WHEN** el usuario acciona el conmutador
 - **THEN** el modo visual deja de mostrarse, la interfaz presenta la consola y la barra de reproducción en curso permanece visible
 
-#### Scenario: Regreso al modo visual desde la consola
+#### Scenario: Conmutación al modo visual
 
 - **GIVEN** la interfaz está en modo consola
 - **WHEN** el usuario acciona el conmutador
@@ -183,7 +183,7 @@ El detalle de la mezcla —las capas activas y el volumen de cada una— SHALL p
 - **WHEN** el usuario modifica la mezcla mediante un control gráfico
 - **THEN** la barra muestra la nueva composición y el nuevo volumen maestro, sin diferencia alguna respecto del mismo cambio hecho por comando
 
-#### Scenario: La barra acompaña a los dos modos
+#### Scenario: El panel acompaña a los dos modos
 
 - **WHEN** el usuario conmuta entre modo consola y modo visual
 - **THEN** la barra permanece visible, con el mismo contenido, y el conmutador sigue accesible en ella
@@ -259,7 +259,7 @@ Los elementos animados de la identidad —como el parpadeo del cursor, la aparic
 
 La apariencia concreta —colores, tipografías, radios y sombras— se rige por la capacidad `theming` y MUST NOT fijarse con valores literales en los componentes, en ninguno de los dos modos.
 
-#### Scenario: Entrada lista al entrar en la consola
+#### Scenario: Entrada lista al abrir
 
 - **WHEN** el usuario entra en el modo consola en un entorno con teclado
 - **THEN** la línea de entrada está enfocada y puede escribir sin hacer clic previo
@@ -296,7 +296,7 @@ El mensaje SHALL indicar la posición en pantalla del conmutador, y no el dibujo
 
 El mensaje MUST NOT declarar que la aplicación se controla escribiendo comandos: la propia consola presentada en pantalla ya lo comunica, y ocupar una línea en repetirlo resta espacio a lo que el usuario no puede deducir por sí mismo.
 
-#### Scenario: La introducción cubre el arranque de un usuario nuevo
+#### Scenario: La bienvenida da a conocer el modo visual
 
 - **WHEN** el usuario entra en el modo consola por primera vez
 - **THEN** ve la marca, una bienvenida, qué hace la aplicación, que existen dos modos con la posición del conmutador, y una indicación de cómo empezar con los comandos

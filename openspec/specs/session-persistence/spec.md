@@ -7,7 +7,7 @@ Define qué recuerda la aplicación entre sesiones: la configuración del usuari
 
 El sistema SHALL persistir localmente la configuración del usuario —como mínimo el volumen maestro, el modo de interfaz elegido y las preferencias de la consola— y SHALL restaurarla al iniciar la aplicación.
 
-Sin preferencia registrada de modo de interfaz, el sistema SHALL adoptar el modo consola.
+Sin preferencia registrada de modo de interfaz, el sistema SHALL adoptar el **modo visual**, con independencia del dispositivo, del tipo de puntero y del tamaño de la ventana.
 
 Cuando el formato de la configuración evolucione para incorporar una preferencia nueva, la lectura de una versión anterior SHALL migrarse conservando las preferencias ya guardadas; incorporar una preferencia MUST NOT provocar la pérdida de las existentes.
 
@@ -25,11 +25,17 @@ La persistencia SHALL ser enteramente local. El sistema MUST NOT enviar la confi
 - **WHEN** vuelve a abrir la aplicación
 - **THEN** la interfaz se presenta en ese mismo modo
 
+#### Scenario: Primer arranque en cualquier dispositivo
+
+- **GIVEN** no hay preferencia de modo de interfaz registrada
+- **WHEN** el usuario abre la aplicación, tanto en un teléfono como en un escritorio con teclado y puntero fino
+- **THEN** la interfaz se presenta en modo visual en ambos casos
+
 #### Scenario: Configuración guardada antes de existir el modo de interfaz
 
 - **GIVEN** existe una configuración guardada en un formato anterior al que incluye el modo de interfaz
 - **WHEN** la aplicación arranca
-- **THEN** conserva el volumen maestro guardado, adopta el modo consola como valor por defecto y guarda la configuración en el formato vigente
+- **THEN** conserva el volumen maestro guardado, adopta el modo visual como valor por defecto y guarda la configuración en el formato vigente
 
 #### Scenario: Primer arranque sin datos previos
 
@@ -38,8 +44,8 @@ La persistencia SHALL ser enteramente local. El sistema MUST NOT enviar la confi
 
 #### Scenario: La configuración no sale del dispositivo
 
-- **WHEN** el usuario modifica su configuración
-- **THEN** no se produce ninguna petición de red derivada de ese cambio
+- **WHEN** el usuario ajusta cualquier preferencia
+- **THEN** la preferencia se guarda únicamente en el dispositivo y no se envía a ningún servicio remoto
 
 ### Requirement: Gestión de escenas sonoras
 
