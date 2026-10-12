@@ -18,7 +18,7 @@ export type TimerEndParse = { ok: true; endAt: number } | { ok: false; message: 
 
 const DURATION_UNITS = /^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/;
 const CLOCK_DURATION = /^(\d+):([0-5]?\d):([0-5]?\d)$/;
-const CLOCK_TIME = /^([01]?\d|2[0-3]):([0-5]\d)$/;
+const CLOCK_TIME = /^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/;
 
 function inRange(seconds: number): TimerParse {
   if (seconds < MIN_TIMER_SECONDS || seconds > MAX_TIMER_SECONDS) {
@@ -53,7 +53,7 @@ export function parseClockTime(text: string, now: number): TimerEndParse {
   if (!match) return { ok: false, message: `No entiendo la hora "${text}". ${TIMER_FORMAT_HELP}` };
 
   const target = new Date(now);
-  target.setHours(Number(match[1]), Number(match[2]), 0, 0);
+  target.setHours(Number(match[1]), Number(match[2]), Number(match[3] ?? 0), 0);
   if (target.getTime() <= now) target.setDate(target.getDate() + 1);
 
   return { ok: true, endAt: target.getTime() };

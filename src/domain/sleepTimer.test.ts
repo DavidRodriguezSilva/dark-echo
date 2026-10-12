@@ -44,6 +44,13 @@ describe("parseClockTime", () => {
     expect(result.ok && result.endAt).toBe(new Date(2026, 9, 13, 20, 0, 0, 0).getTime());
   });
 
+  it("acepta segundos", () => {
+    expect(parseClockTime("23:30:15", at(20, 0))).toEqual({
+      ok: true,
+      endAt: new Date(2026, 9, 12, 23, 30, 15, 0).getTime(),
+    });
+  });
+
   it.each(["25:00", "7", "12:60", "abc"])("rechaza %j", (text) => {
     expect(parseClockTime(text, at(10, 0)).ok).toBe(false);
   });
