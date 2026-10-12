@@ -189,7 +189,7 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
   // "Aplicacion instalable"): se registran una sola vez, con el motor como
   // unica fuente de verdad de lo que suena.
   useEffect(() => {
-    return setupMediaSession(compositionRef.current!);
+    return setupMediaSession(compositionRef.current!, sleepTimerRef.current!.store);
   }, []);
 
   // Actualizacion no disruptiva (offline-playback): la decision se toma en
@@ -304,6 +304,7 @@ function AppShell({
           engine={engine}
           scenes={scenes}
           sleepTimer={sleepTimer.controller}
+          sleepTimerStore={sleepTimer.store}
           notices={notices}
           loadedSceneName={loadedSceneName}
           onLoadedSceneNameChange={setLoadedSceneName}

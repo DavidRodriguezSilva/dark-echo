@@ -5,6 +5,7 @@ import { sceneSentenceShort } from "../domain/composition/sceneSentence";
 import { formatRemaining } from "../domain/sleepTimer";
 import type { InterfaceMode } from "../platform/config";
 import type { SleepTimerStore } from "../platform/sleepTimer";
+import { useSleepTimer } from "./lib/useSleepTimer";
 import { Button } from "./primitives/button";
 import { Slider } from "./primitives/slider";
 
@@ -26,26 +27,12 @@ function playbackWord(mixKind: "empty" | "stopped" | "playing" | "suspended"): s
   return null;
 }
 
-/**
- * Cuenta atrás del temporizador de apagado (`sleep-timer`). Se deriva de
- * `endAt` en cada tick de pantalla: no guarda una cuenta propia que pudiera
- * desfasarse del store.
- */
+/** Cuenta atrás del temporizador de apagado (`sleep-timer`). */
 function TimerCountdown({ store, onCancel }: { store: SleepTimerStore; onCancel: () => void }) {
-  const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
-  const [now, setNow] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!state) return;
-    // Al fijarlo, `now` puede venir de hace rato: se refresca antes del primer tick.
-    setNow(Date.now());
-    const id = setInterval(() => setNow(Date.now()), 1000);
-    return () => clearInterval(id);
-  }, [state]);
-
+  const { state, remainingMs } = useSleepTimer(store);
   if (!state) return null;
 
-  const remaining = formatRemaining(state.endAt - now);
+  const remaining = formatRemaining(remainingMs);
   return (
     <div className="flex shrink-0 items-center gap-1 font-mono text-xs text-terminal-response">
       <Timer className="size-3.5" aria-hidden="true" />
