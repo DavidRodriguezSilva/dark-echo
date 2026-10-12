@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { LayoutGrid, Play, Square, Terminal, Volume2 } from "lucide-react";
+import { LayoutGrid, Play, Square, Terminal, Timer, Volume2, X } from "lucide-react";
 import type { CompositionEngine } from "../audio/composition/compositionEngine";
 import { sceneSentenceShort } from "../domain/composition/sceneSentence";
+import { formatRemaining } from "../domain/sleepTimer";
 import type { InterfaceMode } from "../platform/config";
+import type { SleepTimerStore } from "../platform/sleepTimer";
 import { Button } from "./primitives/button";
 import { Slider } from "./primitives/slider";
 
@@ -24,16 +26,59 @@ function playbackWord(mixKind: "empty" | "stopped" | "playing" | "suspended"): s
   return null;
 }
 
+/**
+ * Cuenta atrás del temporizador de apagado (`sleep-timer`). Se deriva de
+ * `endAt` en cada tick de pantalla: no guarda una cuenta propia que pudiera
+ * desfasarse del store.
+ */
+function TimerCountdown({ store, onCancel }: { store: SleepTimerStore; onCancel: () => void }) {
+  const state = useSyncExternalStore(store.subscribe, store.getSnapshot);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!state) return;
+    // Al fijarlo, `now` puede venir de hace rato: se refresca antes del primer tick.
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [state]);
+
+  if (!state) return null;
+
+  const remaining = formatRemaining(state.endAt - now);
+  return (
+    <div className="flex shrink-0 items-center gap-1 font-mono text-xs text-terminal-response">
+      <Timer className="size-3.5" aria-hidden="true" />
+      <span aria-label={`Apagado en ${remaining}`}>{remaining}</span>
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        className={TOUCH_TARGET}
+        aria-label="Cancelar el temporizador"
+        title="Cancelar el temporizador"
+        onClick={onCancel}
+      >
+        <X className="size-3.5" />
+      </Button>
+    </div>
+  );
+}
+
 export function StatusBar({
   engine,
   mode,
   onToggleMode,
   loadedSceneName,
+  sleepTimer,
+  onCancelTimer,
 }: {
   engine: CompositionEngine;
   mode: InterfaceMode;
   onToggleMode: () => void;
   loadedSceneName: string | null;
+  sleepTimer: SleepTimerStore;
+  onCancelTimer: () => void;
 }) {
   const snapshot = useSyncExternalStore(engine.subscribe, engine.getSnapshot);
   const [volumeOpen, setVolumeOpen] = useState(false);
@@ -98,6 +143,8 @@ export function StatusBar({
       </Button>
 
       <span className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">{mainText}</span>
+
+      <TimerCountdown store={sleepTimer} onCancel={onCancelTimer} />
 
       <div ref={volumeRef} className="relative flex shrink-0 items-center">
         <Button

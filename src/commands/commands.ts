@@ -120,11 +120,23 @@ export interface UpdateController {
   apply(): void;
 }
 
+/**
+ * Lo que el comando `timer` necesita del temporizador de apagado
+ * (`sleep-timer`), inyectado por ui/ igual que `SceneController`.
+ */
+export interface SleepTimerController {
+  setIn(text: string): { ok: boolean; message: string };
+  setAt(text: string): { ok: boolean; message: string };
+  cancel(): { ok: boolean; message: string };
+  status(): string;
+}
+
 export function createCommandRegistry(
   composition: CompositionEngine,
   appearance: AppearanceController,
   scenes: SceneController,
-  update: UpdateController
+  update: UpdateController,
+  sleepTimer: SleepTimerController
 ): CommandRegistry {
   const registry = new CommandRegistry();
   const ambientIds = listAmbients().map((a) => a.id);
@@ -388,6 +400,31 @@ export function createCommandRegistry(
         }
 
         return fromResult(scenes.remove(nombre));
+      },
+    },
+    {
+      name: "timer",
+      aliases: [],
+      description:
+        'Apaga el sonido con un desvanecimiento de 20 s que termina a la hora elegida. "timer 30m" (o "1h30m", "0:27:00") apaga dentro de ese tiempo, "timer at 23:30" a esa hora, "timer off" lo cancela y "timer" sin argumento muestra cuánto falta.',
+      forms: [
+        { args: [] },
+        { args: [{ name: "duracion", type: "string" }] },
+        {
+          args: [
+            { name: "accion", type: "enum", values: ["at"] },
+            { name: "hora", type: "string" },
+          ],
+        },
+      ],
+      handler: (args) => {
+        if ("hora" in args) return fromResult(sleepTimer.setAt(args.hora as string));
+        if ("duracion" in args) {
+          return args.duracion === "off"
+            ? fromResult(sleepTimer.cancel())
+            : fromResult(sleepTimer.setIn(args.duracion as string));
+        }
+        return { kind: "response", message: sleepTimer.status() };
       },
     },
     {

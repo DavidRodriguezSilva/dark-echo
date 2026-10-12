@@ -14,9 +14,9 @@
 - [x] 3.1 `vite.config.ts`: `base` desde `VITE_BASE_PATH` (default `/`), manifest de la PWA (`scope`, `start_url`, íconos) derivado de esa misma base.
 - [x] 3.2 `index.html`: `og:image`/`twitter:image` como URL absoluta a `davidrodriguezsilva.github.io/dark-echo/...`.
 - [x] 3.3 Ajustar el environment `github-pages` en Settings para que permita desplegar desde `main` (bloqueaba con "Branch main is not allowed to deploy... environment protection rules").
-- [ ] 3.4 Quitar el dominio personalizado `darkecho.qd.je` de Settings → Pages, ya abandonado.
+- [x] 3.4 Quitar el dominio personalizado `darkecho.qd.je` de Settings → Pages, ya abandonado.
 
 ## 4. Verificación
 
 - [x] 4.1 Push a `main` y confirmar que `deploy.yml` corre en verde (CI → build → deploy) en la pestaña Actions.
-- [ ] 4.2 Confirmar que el sitio publicado carga en `davidrodriguezsilva.github.io/dark-echo/`, que el manifest/service worker se registran con `scope: "/dark-echo/"` y que la app es instalable.
+- [x] 4.2 Confirmar que el sitio publicado carga en `davidrodriguezsilva.github.io/dark-echo/`, que el manifest/service worker se registran con `scope: "/dark-echo/"` y que la app es instalable.

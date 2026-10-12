@@ -1,7 +1,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { Monitor, Moon, Sun, X } from "lucide-react";
 import type { CompositionEngine } from "../audio/composition/compositionEngine";
-import type { SceneController } from "../commands/commands";
+import type { SceneController, SleepTimerController } from "../commands/commands";
 import type { SystemNoticeStore } from "../platform/systemNotices";
 import { listAmbients } from "../domain/catalog";
 import {
@@ -105,12 +105,14 @@ function ExclusiveRow({
 export function VisualControls({
   engine,
   scenes,
+  sleepTimer,
   notices,
   loadedSceneName,
   onLoadedSceneNameChange,
 }: {
   engine: CompositionEngine;
   scenes: SceneController;
+  sleepTimer: SleepTimerController;
   notices: SystemNoticeStore;
   loadedSceneName: string | null;
   onLoadedSceneNameChange: (name: string | null) => void;
@@ -124,6 +126,9 @@ export function VisualControls({
   const [overwriting, setOverwriting] = useState(false);
   const [sceneMessage, setSceneMessage] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
+  const [timerText, setTimerText] = useState("");
+  const [timerClock, setTimerClock] = useState("");
+  const [timerMessage, setTimerMessage] = useState<string | null>(null);
 
   const { mix, sources, environment, occlusion } = snapshot;
   const activeIds = new Set(sources.map((source) => source.id));
@@ -421,6 +426,80 @@ export function VisualControls({
               id === null ? engine.deactivateOcclusion() : void engine.activateOcclusion(id)
             }
           />
+        </section>
+
+        <section className="flex flex-col gap-2">
+          <SectionTitle>Apagado</SectionTitle>
+
+          <div className="flex flex-wrap gap-2">
+            {[15, 30, 60, 120].map((minutes) => (
+              <Button
+                key={minutes}
+                type="button"
+                size="sm"
+                variant="secondary"
+                className={cn(TOUCH_TARGET, "text-xs")}
+                onClick={() => setTimerMessage(sleepTimer.setIn(`${minutes}m`).message)}
+              >
+                {minutes} min
+              </Button>
+            ))}
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className={cn(TOUCH_TARGET, "text-xs")}
+              onClick={() => setTimerMessage(sleepTimer.cancel().message)}
+            >
+              Cancelar
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              value={timerText}
+              onChange={(event) => setTimerText(event.target.value)}
+              placeholder="Dentro de (1h30m)"
+              aria-label="Apagar dentro de esta duración"
+              className={cn(
+                TOUCH_TARGET,
+                "min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              )}
+            />
+            <Button
+              type="button"
+              size="sm"
+              className={cn(TOUCH_TARGET, "text-xs")}
+              disabled={timerText.trim().length === 0}
+              onClick={() => setTimerMessage(sleepTimer.setIn(timerText).message)}
+            >
+              Fijar
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <input
+              type="time"
+              value={timerClock}
+              onChange={(event) => setTimerClock(event.target.value)}
+              aria-label="Apagar a esta hora"
+              className={cn(
+                TOUCH_TARGET,
+                "min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              )}
+            />
+            <Button
+              type="button"
+              size="sm"
+              className={cn(TOUCH_TARGET, "text-xs")}
+              disabled={timerClock.length === 0}
+              onClick={() => setTimerMessage(sleepTimer.setAt(timerClock).message)}
+            >
+              Fijar
+            </Button>
+          </div>
+
+          {timerMessage && <p className="text-xs text-terminal-response">{timerMessage}</p>}
         </section>
 
         <section className="flex flex-col gap-2">

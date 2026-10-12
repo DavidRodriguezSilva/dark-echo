@@ -61,3 +61,38 @@ describe("executeCommand", () => {
     expect(result).toEqual({ kind: "response", message: "reproduciendo wind" });
   });
 });
+
+describe("comando timer", () => {
+  function timerRegistry(calls: string[]): CommandRegistry {
+    const registry = new CommandRegistry();
+    registry.register({
+      name: "timer",
+      aliases: [],
+      description: "temporizador",
+      forms: [
+        { args: [] },
+        { args: [{ name: "duracion", type: "string" }] },
+        {
+          args: [
+            { name: "accion", type: "enum", values: ["at"] },
+            { name: "hora", type: "string" },
+          ],
+        },
+      ],
+      handler: (args) => {
+        calls.push(JSON.stringify(args));
+        return { kind: "response", message: "ok" };
+      },
+    });
+    return registry;
+  }
+
+  it("acepta las tres formas", async () => {
+    const calls: string[] = [];
+    const registry = timerRegistry(calls);
+    await executeCommand("timer", registry);
+    await executeCommand("timer 30m", registry);
+    await executeCommand("timer at 23:30", registry);
+    expect(calls).toEqual(["{}", '{"duracion":"30m"}', '{"accion":"at","hora":"23:30"}']);
+  });
+});

@@ -173,6 +173,7 @@ principales (`help` en la aplicación lista todos con su sintaxis exacta):
 | `volume [capa] <valor>`             | Fija el volumen maestro o el de una capa concreta                                              |
 | `list` / `status`                   | Catálogo de ambientes / mezcla activa y sus volúmenes                                          |
 | `scene save / load / list / delete` | Guarda, carga, lista o elimina escenas con nombre                                              |
+| `timer <30m / at 23:30 / off>`      | Apaga el sonido con un desvanecimiento de 20 s que termina a la hora elegida                   |
 | `theme` / `scheme`                  | Selecciona tema visual / esquema claro-oscuro                                                  |
 | `update`                            | Aplica una actualización de la aplicación, si hay alguna pendiente                             |
 

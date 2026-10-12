@@ -6,6 +6,7 @@ import {
   createCommandRegistry,
   type AppearanceController,
   type SceneController,
+  type SleepTimerController,
   type UpdateController,
 } from "../commands/commands";
 import { SystemNoticeStore } from "../platform/systemNotices";
@@ -14,6 +15,7 @@ import { readLastMix, writeLastMix } from "../platform/lastMix";
 import { InterfaceModeStore } from "../platform/interfaceMode";
 import { setupMediaSession } from "../platform/mediaSession";
 import { SceneStore } from "../platform/sceneStore";
+import { createSleepTimerController, SleepTimerStore } from "../platform/sleepTimer";
 import type { UpdateStore } from "../platform/update";
 import { BootSplash } from "./BootSplash";
 import { Console } from "./Console";
@@ -111,6 +113,39 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
     };
   }
 
+  // Temporizador de apagado (`sleep-timer`): el store decide cuándo, el motor
+  // sigue siendo quien desvanece (`stop(fadeSeconds)`).
+  const sleepTimerRef = useRef<{
+    store: SleepTimerStore;
+    controller: SleepTimerController;
+  } | null>(null);
+  if (!sleepTimerRef.current) {
+    const engine = compositionRef.current;
+    const store = new SleepTimerStore({
+      now: () => Date.now(),
+      every: (callback, ms) => {
+        const id = setInterval(callback, ms);
+        return () => clearInterval(id);
+      },
+      isPlaying: () => engine.getSnapshot().mix.kind === "playing",
+      fadeOut: (fadeSeconds) => {
+        engine.stop(fadeSeconds);
+      },
+    });
+    sleepTimerRef.current = { store, controller: createSleepTimerController(store, Date.now) };
+  }
+
+  // Al volver la pestaña a primer plano el navegador pudo haber frenado el
+  // intervalo: se revisa de inmediato contra la marca absoluta (design.md D4).
+  useEffect(() => {
+    const store = sleepTimerRef.current!.store;
+    const onVisible = () => {
+      if (document.visibilityState === "visible") store.check();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
+
   const registryRef = useRef<ReturnType<typeof createCommandRegistry> | null>(null);
   if (!registryRef.current) {
     const appearanceController: AppearanceController = {
@@ -126,7 +161,8 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
       compositionRef.current,
       appearanceController,
       sceneControllerRef.current,
-      updateController
+      updateController,
+      sleepTimerRef.current.controller
     );
   }
 
@@ -185,6 +221,7 @@ export function App({ updateStore }: { updateStore: UpdateStore }) {
         notices={notices}
         modeStore={modeRef.current}
         scenes={sceneControllerRef.current}
+        sleepTimer={sleepTimerRef.current}
       />
     </AppearanceProvider>
   );
@@ -208,6 +245,7 @@ function AppShell({
   notices,
   modeStore,
   scenes,
+  sleepTimer,
 }: {
   booted: boolean;
   onBooted: () => void;
@@ -216,6 +254,7 @@ function AppShell({
   notices: SystemNoticeStore;
   modeStore: InterfaceModeStore;
   scenes: SceneController;
+  sleepTimer: { store: SleepTimerStore; controller: SleepTimerController };
 }) {
   const mode = useSyncExternalStore(modeStore.subscribe, modeStore.getSnapshot);
 
@@ -264,6 +303,7 @@ function AppShell({
         <VisualControls
           engine={engine}
           scenes={scenes}
+          sleepTimer={sleepTimer.controller}
           notices={notices}
           loadedSceneName={loadedSceneName}
           onLoadedSceneNameChange={setLoadedSceneName}
@@ -274,6 +314,8 @@ function AppShell({
         mode={mode}
         onToggleMode={handleToggleMode}
         loadedSceneName={loadedSceneName}
+        sleepTimer={sleepTimer.store}
+        onCancelTimer={() => sleepTimer.controller.cancel()}
       />
     </main>
   );
