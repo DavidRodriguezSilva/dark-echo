@@ -18,6 +18,8 @@ import {
  */
 
 export interface SleepTimerState {
+  /** Marca de reloj (ms) en la que se fijó; con `endAt` da la duración total. */
+  startedAt: number;
   /** Marca de reloj (ms) en la que el sonido ya está en silencio. */
   endAt: number;
   /** El desvanecimiento ya empezó. */
@@ -62,7 +64,7 @@ export class SleepTimerStore {
       };
     }
     this.clear(false);
-    this.state = { endAt, fading: false };
+    this.state = { startedAt: this.deps.now(), endAt, fading: false };
     this.stopTicking = this.deps.every(() => this.check(), 1000);
     this.check();
     this.emit();

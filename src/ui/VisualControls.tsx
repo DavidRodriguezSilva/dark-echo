@@ -1,7 +1,8 @@
 import { useState, useSyncExternalStore } from "react";
-import { Monitor, Moon, Sun, X } from "lucide-react";
+import { ChevronDown, ChevronRight, Monitor, Moon, Sun, X } from "lucide-react";
 import type { CompositionEngine } from "../audio/composition/compositionEngine";
 import type { SceneController, SleepTimerController } from "../commands/commands";
+import type { SleepTimerStore } from "../platform/sleepTimer";
 import type { SystemNoticeStore } from "../platform/systemNotices";
 import { listAmbients } from "../domain/catalog";
 import {
@@ -17,6 +18,7 @@ import { sceneSentence } from "../domain/composition/sceneSentence";
 import { sameScene } from "../domain/scene";
 import { listThemes } from "../domain/themes";
 import { useAppearance } from "./AppearanceContext";
+import { TimerSection } from "./TimerSection";
 import { Wordmark } from "./Wordmark";
 import { Button } from "./primitives/button";
 import { Slider } from "./primitives/slider";
@@ -106,6 +108,7 @@ export function VisualControls({
   engine,
   scenes,
   sleepTimer,
+  sleepTimerStore,
   notices,
   loadedSceneName,
   onLoadedSceneNameChange,
@@ -113,6 +116,7 @@ export function VisualControls({
   engine: CompositionEngine;
   scenes: SceneController;
   sleepTimer: SleepTimerController;
+  sleepTimerStore: SleepTimerStore;
   notices: SystemNoticeStore;
   loadedSceneName: string | null;
   onLoadedSceneNameChange: (name: string | null) => void;
@@ -126,9 +130,7 @@ export function VisualControls({
   const [overwriting, setOverwriting] = useState(false);
   const [sceneMessage, setSceneMessage] = useState<string | null>(null);
   const [addError, setAddError] = useState<string | null>(null);
-  const [timerText, setTimerText] = useState("");
-  const [timerClock, setTimerClock] = useState("");
-  const [timerMessage, setTimerMessage] = useState<string | null>(null);
+  const [scenesOpen, setScenesOpen] = useState(false);
 
   const { mix, sources, environment, occlusion } = snapshot;
   const activeIds = new Set(sources.map((source) => source.id));
@@ -428,148 +430,97 @@ export function VisualControls({
           />
         </section>
 
-        <section className="flex flex-col gap-2">
-          <SectionTitle>Apagado</SectionTitle>
-
-          <div className="flex flex-wrap gap-2">
-            {[15, 30, 60, 120].map((minutes) => (
-              <Button
-                key={minutes}
-                type="button"
-                size="sm"
-                variant="secondary"
-                className={cn(TOUCH_TARGET, "text-xs")}
-                onClick={() => setTimerMessage(sleepTimer.setIn(`${minutes}m`).message)}
-              >
-                {minutes} min
-              </Button>
-            ))}
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className={cn(TOUCH_TARGET, "text-xs")}
-              onClick={() => setTimerMessage(sleepTimer.cancel().message)}
-            >
-              Cancelar
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              value={timerText}
-              onChange={(event) => setTimerText(event.target.value)}
-              placeholder="Dentro de (1h30m)"
-              aria-label="Apagar dentro de esta duración"
-              className={cn(
-                TOUCH_TARGET,
-                "min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              )}
-            />
-            <Button
-              type="button"
-              size="sm"
-              className={cn(TOUCH_TARGET, "text-xs")}
-              disabled={timerText.trim().length === 0}
-              onClick={() => setTimerMessage(sleepTimer.setIn(timerText).message)}
-            >
-              Fijar
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              type="time"
-              value={timerClock}
-              onChange={(event) => setTimerClock(event.target.value)}
-              aria-label="Apagar a esta hora"
-              className={cn(
-                TOUCH_TARGET,
-                "min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              )}
-            />
-            <Button
-              type="button"
-              size="sm"
-              className={cn(TOUCH_TARGET, "text-xs")}
-              disabled={timerClock.length === 0}
-              onClick={() => setTimerMessage(sleepTimer.setAt(timerClock).message)}
-            >
-              Fijar
-            </Button>
-          </div>
-
-          {timerMessage && <p className="text-xs text-terminal-response">{timerMessage}</p>}
-        </section>
+        <TimerSection controller={sleepTimer} store={sleepTimerStore} />
 
         <section className="flex flex-col gap-2">
-          <SectionTitle>Escenas</SectionTitle>
+          <button
+            type="button"
+            aria-expanded={scenesOpen}
+            onClick={() => setScenesOpen((open) => !open)}
+            className="flex min-h-11 items-center justify-between gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <SectionTitle>Escenas</SectionTitle>
+            <span className="flex items-center gap-1 text-xs text-terminal-response">
+              {savedScenes.length === 0
+                ? "Guardar"
+                : `${savedScenes.length} ${savedScenes.length === 1 ? "guardada" : "guardadas"}`}
+              {scenesOpen ? (
+                <ChevronDown className="size-4" aria-hidden="true" />
+              ) : (
+                <ChevronRight className="size-4" aria-hidden="true" />
+              )}
+            </span>
+          </button>
 
-          {savedScenes.length === 0 ? (
-            <p className="text-xs text-terminal-response">Todavía no has guardado ninguna.</p>
-          ) : (
-            <ul className="flex flex-col gap-1">
-              {savedScenes.map((name) => (
-                <li key={name} className="flex items-center gap-2">
-                  <span
-                    className={cn(
-                      "flex-1 truncate text-xs",
-                      name === loadedSceneName ? "text-foreground" : "text-terminal-response"
-                    )}
-                  >
-                    {name}
-                  </span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    className={cn(TOUCH_TARGET, "text-xs")}
-                    onClick={() => void loadScene(name)}
-                  >
-                    Cargar
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className={TOUCH_TARGET}
-                    aria-label={`Eliminar la escena ${name}`}
-                    onClick={() => deleteScene(name)}
-                  >
-                    <X className="size-3.5" />
-                  </Button>
-                </li>
-              ))}
-            </ul>
+          {scenesOpen && (
+            <div className="flex flex-col gap-2">
+              {savedScenes.length === 0 ? (
+                <p className="text-xs text-terminal-response">Todavía no has guardado ninguna.</p>
+              ) : (
+                <ul className="flex flex-col gap-1">
+                  {savedScenes.map((name) => (
+                    <li key={name} className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "flex-1 truncate text-xs",
+                          name === loadedSceneName ? "text-foreground" : "text-terminal-response"
+                        )}
+                      >
+                        {name}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className={cn(TOUCH_TARGET, "text-xs")}
+                        onClick={() => void loadScene(name)}
+                      >
+                        Cargar
+                      </Button>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className={TOUCH_TARGET}
+                        aria-label={`Eliminar la escena ${name}`}
+                        onClick={() => deleteScene(name)}
+                      >
+                        <X className="size-3.5" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="flex items-center gap-2">
+                <input
+                  value={sceneName}
+                  onChange={(event) => {
+                    setSceneName(event.target.value);
+                    setOverwriting(false);
+                  }}
+                  placeholder="Nombre de la escena"
+                  aria-label="Nombre de la escena a guardar"
+                  className={cn(
+                    TOUCH_TARGET,
+                    "min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  )}
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  className={cn(TOUCH_TARGET, "text-xs")}
+                  variant={overwriting ? "secondary" : "default"}
+                  disabled={sceneName.trim().length === 0}
+                  onClick={() => saveScene()}
+                >
+                  {overwriting ? "Confirmar" : "Guardar"}
+                </Button>
+              </div>
+
+              {sceneMessage && <p className="text-xs text-terminal-response">{sceneMessage}</p>}
+            </div>
           )}
-
-          <div className="flex items-center gap-2">
-            <input
-              value={sceneName}
-              onChange={(event) => {
-                setSceneName(event.target.value);
-                setOverwriting(false);
-              }}
-              placeholder="Nombre de la escena"
-              aria-label="Nombre de la escena a guardar"
-              className={cn(
-                TOUCH_TARGET,
-                "min-w-0 flex-1 rounded-md border border-border bg-transparent px-2 text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              )}
-            />
-            <Button
-              type="button"
-              size="sm"
-              className={cn(TOUCH_TARGET, "text-xs")}
-              variant={overwriting ? "secondary" : "default"}
-              disabled={sceneName.trim().length === 0}
-              onClick={() => saveScene()}
-            >
-              {overwriting ? "Confirmar" : "Guardar"}
-            </Button>
-          </div>
-
-          {sceneMessage && <p className="text-xs text-terminal-response">{sceneMessage}</p>}
         </section>
       </div>
     </div>

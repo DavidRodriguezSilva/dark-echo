@@ -1,4 +1,5 @@
 import type { CompositionEngine } from "../audio/composition/compositionEngine";
+import type { SleepTimerStore } from "./sleepTimer";
 import { findAmbient } from "../domain/catalog";
 import type { Scene } from "../domain/scene";
 
@@ -56,7 +57,11 @@ function createFocusBeaconUrl(): string {
  * un álbum—, así que solo se expone `play`/`pause`/`stop`, sobre los mismos
  * `play()`/`stop()` que ya usa la consola.
  */
-export function setupMediaSession(engine: CompositionEngine): () => void {
+export function setupMediaSession(
+  engine: CompositionEngine,
+  timer?: Pick<SleepTimerStore, "subscribe" | "getSnapshot">,
+  now: () => number = Date.now
+): () => void {
   if (!("mediaSession" in navigator)) return () => {};
 
   const session = navigator.mediaSession;
@@ -116,7 +121,14 @@ export function setupMediaSession(engine: CompositionEngine): () => void {
     // gesto de avance/retroceso que no mueve nada real — dark echo no tiene
     // pistas ni posición que adelantar. `Infinity` es el valor que la propia
     // API reserva para "sin fin definido", como una transmisión en vivo.
-    if (sounding) {
+    // Con un temporizador de apagado activo sí hay un final real: la barra
+    // avanza hasta la hora de apagado (`sleep-timer`).
+    const timerState = timer?.getSnapshot() ?? null;
+    if (sounding && timerState) {
+      const duration = Math.max(1, (timerState.endAt - timerState.startedAt) / 1000);
+      const position = Math.min(duration, Math.max(0, (now() - timerState.startedAt) / 1000));
+      session.setPositionState({ duration, position, playbackRate: 1 });
+    } else if (sounding) {
       session.setPositionState({ duration: Infinity, position: 0, playbackRate: 1 });
     } else {
       session.setPositionState();
@@ -128,10 +140,12 @@ export function setupMediaSession(engine: CompositionEngine): () => void {
   session.setActionHandler("stop", () => engine.stop());
 
   sync();
-  const unsubscribe = engine.subscribe(sync);
+  const unsubscribeEngine = engine.subscribe(sync);
+  const unsubscribeTimer = timer?.subscribe(sync);
 
   return () => {
-    unsubscribe();
+    unsubscribeEngine();
+    unsubscribeTimer?.();
     session.setActionHandler("play", null);
     session.setActionHandler("pause", null);
     session.setActionHandler("stop", null);
