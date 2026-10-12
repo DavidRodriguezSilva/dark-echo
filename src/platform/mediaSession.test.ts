@@ -115,6 +115,31 @@ describe("setupMediaSession", () => {
     expect(session.positionState?.duration).toBe(Infinity);
   });
 
+  it("con un temporizador activo, la barra avanza hacia la hora de apagado; sin él, vuelve a Infinity", () => {
+    const { session } = installFakeMediaSession();
+    const { engine } = fakeEngine({ mix: { kind: "playing" }, composition: sceneWith("rain") });
+    let state: { startedAt: number; endAt: number; fading: boolean } | null = null;
+    const listeners = new Set<() => void>();
+    const timer = {
+      getSnapshot: () => state,
+      subscribe: (l: () => void) => {
+        listeners.add(l);
+        return () => listeners.delete(l);
+      },
+    };
+
+    setupMediaSession(engine, timer, () => 130_000);
+    expect(session.positionState?.duration).toBe(Infinity);
+
+    state = { startedAt: 100_000, endAt: 1_900_000, fading: false };
+    for (const l of listeners) l();
+    expect(session.positionState).toEqual({ duration: 1800, position: 30, playbackRate: 1 });
+
+    state = null;
+    for (const l of listeners) l();
+    expect(session.positionState?.duration).toBe(Infinity);
+  });
+
   it("suspendido por el entorno se refleja como pausado, no como sonando, pero conserva el titulo", () => {
     const { session } = installFakeMediaSession();
     const { engine } = fakeEngine({ mix: { kind: "suspended" }, composition: sceneWith("rain") });
