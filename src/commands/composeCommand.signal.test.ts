@@ -8,6 +8,7 @@ import {
   createCommandRegistry,
   type AppearanceController,
   type SceneController,
+  type SleepTimerController,
   type UpdateController,
 } from "./commands";
 
@@ -35,7 +36,14 @@ function buildRegistry() {
   };
   const update: UpdateController = { isAvailable: () => false, apply: () => {} };
 
-  return createCommandRegistry(new CompositionEngine(), appearance, scenes, update);
+  const sleepTimer: SleepTimerController = {
+    setIn: () => ({ ok: true, message: "no aplica" }),
+    setAt: () => ({ ok: true, message: "no aplica" }),
+    cancel: () => ({ ok: true, message: "no aplica" }),
+    status: () => "no aplica",
+  };
+
+  return createCommandRegistry(new CompositionEngine(), appearance, scenes, update, sleepTimer);
 }
 
 async function run(registry: ReturnType<typeof buildRegistry>, input: string) {
